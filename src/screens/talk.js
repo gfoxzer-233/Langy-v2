@@ -1018,6 +1018,20 @@ function renderTalkSummary(container) {
                 </div>
                 ` : ''}
 
+                ${summary.vocabWordsUsed > 0 ? `
+                <div style="display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-3) var(--sp-4);
+                    background:var(--bg-card); border-radius:var(--radius-md); margin-bottom:var(--sp-3);
+                    border:1px solid var(--border);">
+                    <span style="color:#3b82f6; font-size:18px;">${LangyIcons.bookOpen}</span>
+                    <span style="font-size:var(--fs-sm); color:var(--text-secondary);">
+                        ${{ en: 'Vocab used', ru: 'Словарь', es: 'Vocabulario' }[lang]}
+                    </span>
+                    <span style="margin-left:auto; font-size:var(--fs-sm); font-weight:var(--fw-bold); color:#3b82f6;">
+                        ${summary.vocabWordsUsed} ${{ en: 'words', ru: 'слов', es: 'palabras' }[lang]}
+                    </span>
+                </div>
+                ` : ''}
+
                 ${(() => {
                     const _focusTag = ScreenState.get('coachFocusTag', null);
                     const _isCoach = ['coach', 'pro', 'premium'].includes(LangyState.subscription?.plan);

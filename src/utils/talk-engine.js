@@ -1038,12 +1038,15 @@ The learner is starting a daily challenge or returning for a short practice mome
 - Return motivation priorities: low friction, emotional lift, easy restart, momentum, short-session readiness, confidence to begin.
 - Avoid: guilt, streak shaming, exaggerated hype, long motivational speeches, making the learner feel behind, too many instructions at once.` : '';
 
+        // Vocab context for AI (inject suggested words naturally)
+        const vocabContext = typeof VocabSpeaking !== 'undefined' ? VocabSpeaking.getAIVocabContext(scenarioId) : '';
+
         const systemPrompt = `${persona.systemPrompt}
 
 CURRENT SCENARIO: ${scenario.title} — ${scenario.desc}
 STUDENT LEVEL: ${level}
 STUDENT NAME: ${LangyState?.user?.name || 'Student'}
-TARGET LANGUAGE: ${targetLang === 'ar' ? 'Arabic (MSA)' : targetLang === 'es' ? 'Spanish' : 'English'}${coachDirective}${langDirective}${beginnerDirective}${scenarioDirective}${freeTalkDirective}${reengageDirective}${placementDirective}${onboardingDirective}${guidedSpeakingDirective}${writingFeedbackDirective}${dailyChallengeDirective}
+TARGET LANGUAGE: ${targetLang === 'ar' ? 'Arabic (MSA)' : targetLang === 'es' ? 'Spanish' : 'English'}${coachDirective}${langDirective}${beginnerDirective}${scenarioDirective}${freeTalkDirective}${reengageDirective}${placementDirective}${onboardingDirective}${guidedSpeakingDirective}${writingFeedbackDirective}${dailyChallengeDirective}${vocabContext}
 ${curCtx ? `
 CURRICULUM CONTEXT:
 ${curCtx}
@@ -1407,6 +1410,15 @@ Rules:
             summary.xpEarned = xpEarned;
             summary.dangyEarned = dangyEarned;
 
+            // ── Vocab mastery: detect words used in speech ──
+            if (typeof VocabSpeaking !== 'undefined') {
+                const vocabResult = VocabSpeaking.processSessionEnd(
+                    currentSession.userMessages,
+                    currentSession.scenarioId
+                );
+                summary.vocabWordsUsed = vocabResult.wordsUsed;
+            }
+
             // Save to talk history
             if (!LangyState.talkHistory) LangyState.talkHistory = [];
             LangyState.talkHistory.unshift({
@@ -1417,6 +1429,7 @@ Rules:
                 turns: summary.turns,
                 xp: xpEarned,
                 pronunciation: summary.avgPronunciation || null,
+                vocabWords: summary.vocabWordsUsed || 0,
             });
             // Keep last 20
             if (LangyState.talkHistory.length > 20) LangyState.talkHistory = LangyState.talkHistory.slice(0, 20);
@@ -1443,12 +1456,18 @@ Rules:
         }
     }
 
-    // ─── HINTS ───
+    // ─── HINTS (vocab-aware) ───
     function getHints(scenarioId) {
         return scenarioHints[scenarioId] || scenarioHints.free;
     }
 
     function getRandomHint(scenarioId) {
+        // Try vocab-driven hint first
+        if (typeof VocabSpeaking !== 'undefined') {
+            const vocabHint = VocabSpeaking.getRandomHint(scenarioId);
+            if (vocabHint) return vocabHint.text;
+        }
+        // Fallback to static hints
         const hints = getHints(scenarioId);
         return hints[Math.floor(Math.random() * hints.length)];
     }
