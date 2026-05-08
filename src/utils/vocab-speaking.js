@@ -13,22 +13,32 @@ const VocabSpeaking = (() => {
     const SCENARIO_CATEGORIES = {
         coffee:     ['food', 'greetings', 'common'],
         restaurant: ['food', 'greetings', 'common'],
-        airport:    ['places', 'common', 'greetings'],
+        airport:    ['places', 'common', 'greetings', 'transport'],
         shopping:   ['shopping', 'clothes', 'objects', 'common'],
         doctor:     ['health_basic', 'body', 'common'],
-        roommate:   ['daily_routines', 'objects', 'adjectives', 'common'],
+        roommate:   ['daily_routines', 'objects', 'adjectives', 'common', 'home'],
         interview:  ['jobs', 'common', 'abstract'],
-        free:       ['greetings', 'common', 'adjectives', 'food'],
+        free:       ['greetings', 'common', 'adjectives', 'food', 'hobbies'],
     };
+
+    // ── Resolve correct bank for current target language ──
+    function _getBank() {
+        const lang = typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en';
+        if (lang === 'ar' && typeof LangyARVocabBank !== 'undefined') return LangyARVocabBank;
+        if (lang === 'es' && typeof LangyESVocabBank !== 'undefined') return LangyESVocabBank;
+        if (typeof LangyVocabBank !== 'undefined') return LangyVocabBank;
+        return null;
+    }
 
     // ── Get vocab-driven hints for a scenario ──
     // Returns up to `count` phrases from the vocab bank matching the scenario
     function getVocabHints(scenarioId, count = 5) {
-        if (typeof LangyVocabBank === 'undefined') return [];
+        const bank = _getBank();
+        if (!bank) return [];
 
         const categories = SCENARIO_CATEGORIES[scenarioId] || SCENARIO_CATEGORIES.free;
         const cefr = LangyState?.settings?.languageLevel || 'A1';
-        const level = LangyVocabBank[cefr];
+        const level = bank[cefr];
         if (!level) return [];
 
         // Collect words from matching categories that have phrases
@@ -87,11 +97,12 @@ const VocabSpeaking = (() => {
     // Called with the user's text. Finds any vocab words they used.
     // Returns array of matched word ids.
     function detectWordsInSpeech(userText, scenarioId) {
-        if (typeof LangyVocabBank === 'undefined') return [];
+        const bank = _getBank();
+        if (!bank) return [];
         if (!userText || userText.length < 2) return [];
 
         const cefr = LangyState?.settings?.languageLevel || 'A1';
-        const level = LangyVocabBank[cefr];
+        const level = bank[cefr];
         if (!level) return [];
 
         const textLower = userText.toLowerCase();

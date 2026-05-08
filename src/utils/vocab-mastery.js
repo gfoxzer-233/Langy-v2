@@ -97,11 +97,16 @@ const VocabMastery = (() => {
 
     // ── Get vocab bank size for profile denominator ──
     function getBankSize(langPrefix, cefr) {
-        if (typeof LangyVocabBank === 'undefined') return 0;
-        if (cefr && LangyVocabBank[cefr]) {
-            return LangyVocabBank[cefr].getAllWords().length;
+        // Resolve correct bank per language
+        let bank = null;
+        if (langPrefix === 'ar' && typeof LangyARVocabBank !== 'undefined') bank = LangyARVocabBank;
+        else if (langPrefix === 'es' && typeof LangyESVocabBank !== 'undefined') bank = LangyESVocabBank;
+        else if (typeof LangyVocabBank !== 'undefined') bank = LangyVocabBank;
+        if (!bank) return 0;
+        if (cefr && bank[cefr] && bank[cefr].getAllWords) {
+            return bank[cefr].getAllWords().length;
         }
-        return LangyVocabBank.getTotalCount();
+        return typeof bank.getTotalCount === 'function' ? bank.getTotalCount() : 0;
     }
 
     // ── Profile card data ──
