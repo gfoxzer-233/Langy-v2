@@ -708,36 +708,77 @@ function renderTalkSummary(container) {
     const isCoachingRetrySession = !!ScreenState.get('coachLoopActive', false) && !!coachingFocus;
 
     function detectWeakSpot() {
-        if (!corrections.length && !plainFeedback) return null;
-        const source = (corrections[0]?.why || corrections[0]?.better || plainFeedback || '').toLowerCase();
-        const said = corrections[0]?.said || '';
-        const better = corrections[0]?.better || '';
+        // ── Spec §7: No weak spot if corrections empty, AI failed, or session unqualified ──
+        if (!corrections.length) return null;
+        const c0 = corrections[0];
+        if (!c0 || !c0.better || c0.better.trim().length === 0) return null;
+        if (!qualified) return null;
 
-        if (source.includes('article') || /\b(a|an|the)\b/.test(said.toLowerCase())) {
+        const source = (c0.why || '').toLowerCase();
+        const said = (c0.said || '').toLowerCase();
+        const better = c0.better;
+
+        // ── Priority 1: Coach AI tag (premium) — use directly if set ──
+        if (c0.tag && typeof c0.tag === 'string') {
+            const tagLabels = {
+                articles:          { en: 'articles (a / an / the)', ru: 'артикли (a / an / the)', es: 'artículos (a / an / the)' },
+                verb_tense:        { en: 'verb tense', ru: 'согласование времен', es: 'tiempos verbales' },
+                tense:             { en: 'verb tense', ru: 'согласование времен', es: 'tiempos verbales' },
+                prepositions:      { en: 'prepositions', ru: 'предлоги', es: 'preposiciones' },
+                preposition:       { en: 'prepositions', ru: 'предлоги', es: 'preposiciones' },
+                word_order:        { en: 'word order', ru: 'порядок слов', es: 'orden de palabras' },
+                agreement:         { en: 'agreement', ru: 'согласование', es: 'concordancia' },
+                vocabulary:        { en: 'vocabulary', ru: 'словарный запас', es: 'vocabulario' },
+                pronunciation:     { en: 'pronunciation', ru: 'произношение', es: 'pronunciación' },
+                sentence_clarity:  { en: 'sentence clarity', ru: 'структура фразы', es: 'claridad de la frase' },
+            };
+            const normalized = c0.tag.toLowerCase().replace(/\s+/g, '_');
+            const labels = tagLabels[normalized] || tagLabels.sentence_clarity;
+            return { tag: normalized, label: labels[lang], prompt: better };
+        }
+
+        // ── Priority 2: Keyword detection on corrections[0] ──
+        if (source.includes('article') || /\b(a|an|the)\b/.test(said)) {
             return {
                 tag: 'articles',
                 label: { en: 'articles (a / an / the)', ru: 'артикли (a / an / the)', es: 'artículos (a / an / the)' }[lang],
-                prompt: better || 'I saw a movie and the story was great.',
+                prompt: better,
             };
         }
         if (source.includes('tense') || source.includes('past') || source.includes('present')) {
             return {
                 tag: 'verb_tense',
-                label: { en: 'verb tense consistency', ru: 'согласование времен', es: 'consistencia de tiempos verbales' }[lang],
-                prompt: better || 'Yesterday I went to work and finished my tasks.',
+                label: { en: 'verb tense', ru: 'согласование времен', es: 'tiempos verbales' }[lang],
+                prompt: better,
             };
         }
         if (source.includes('preposition')) {
             return {
                 tag: 'prepositions',
                 label: { en: 'prepositions', ru: 'предлоги', es: 'preposiciones' }[lang],
-                prompt: better || 'I am interested in learning languages.',
+                prompt: better,
             };
         }
+        if (source.includes('word order') || source.includes('order')) {
+            return {
+                tag: 'word_order',
+                label: { en: 'word order', ru: 'порядок слов', es: 'orden de palabras' }[lang],
+                prompt: better,
+            };
+        }
+        if (source.includes('agreement') || source.includes('agree')) {
+            return {
+                tag: 'agreement',
+                label: { en: 'agreement', ru: 'согласование', es: 'concordancia' }[lang],
+                prompt: better,
+            };
+        }
+
+        // ── Priority 3: Fallback ──
         return {
             tag: 'sentence_clarity',
-            label: { en: 'clear sentence structure', ru: 'ясная структура фразы', es: 'estructura clara de la frase' }[lang],
-            prompt: better || 'I want to practice speaking every day.',
+            label: { en: 'sentence clarity', ru: 'структура фразы', es: 'claridad de la frase' }[lang],
+            prompt: better,
         };
     }
 
@@ -874,7 +915,10 @@ function renderTalkSummary(container) {
                 </div>
                 ` : ''}
 
-                ${!isCoachingRetrySession && activeWeakSpot ? `
+                ${(() => {
+                    // Spec §7c: Show focus block when weak spot exists, UNLESS retry improved
+                    const retryImproved = isCoachingRetrySession && focusRelatedCorrections.length === 0;
+                    return activeWeakSpot && !retryImproved ? `
                 <div style="padding:var(--sp-4); margin-bottom:var(--sp-3); border-radius:var(--radius-md);
                     background:rgba(124,108,246,0.05); border:1px solid rgba(124,108,246,0.2);
                     animation:fadeInUp 0.5s var(--ease-out) 0.15s both;">
@@ -907,7 +951,8 @@ function renderTalkSummary(container) {
                         </div>
                     </div>
                 </div>
-                ` : ''}
+                ` : '';
+                })()}
 
                 ${retryOutcome ? `
                 <div style="padding:var(--sp-4); margin-bottom:var(--sp-3); border-radius:var(--radius-md);
