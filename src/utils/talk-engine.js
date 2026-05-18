@@ -836,6 +836,15 @@ If they get it right, acknowledge it briefly.
 Do NOT lecture about grammar — keep it conversational and natural.
 Aim for the student to practice ${coachFocus} at least 3-4 times during this conversation.` : '';
 
+        // Lesson context: inject when learner arrives directly from a lesson, then clear
+        const lessonContext = typeof ScreenState !== 'undefined' ? ScreenState.get('lessonContext', null) : null;
+        const lessonDirective = lessonContext ? `
+
+LESSON CONTEXT:
+${lessonContext}` : '';
+        // Clear after reading — only affects the first session, not subsequent retries
+        if (lessonContext && typeof ScreenState !== 'undefined') ScreenState.remove('lessonContext');
+
         // Get target language and curriculum context
         const targetLang = typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en';
         const curCtx = typeof LangyCurriculum !== 'undefined' ? LangyCurriculum.getAIContext() : '';
@@ -1046,7 +1055,7 @@ The learner is starting a daily challenge or returning for a short practice mome
 CURRENT SCENARIO: ${scenario.title} — ${scenario.desc}
 STUDENT LEVEL: ${level}
 STUDENT NAME: ${LangyState?.user?.name || 'Student'}
-TARGET LANGUAGE: ${targetLang === 'ar' ? 'Arabic (MSA)' : targetLang === 'es' ? 'Spanish' : 'English'}${coachDirective}${langDirective}${beginnerDirective}${scenarioDirective}${freeTalkDirective}${reengageDirective}${placementDirective}${onboardingDirective}${guidedSpeakingDirective}${writingFeedbackDirective}${dailyChallengeDirective}${vocabContext}
+TARGET LANGUAGE: ${targetLang === 'ar' ? 'Arabic (MSA)' : targetLang === 'es' ? 'Spanish' : 'English'}${coachDirective}${lessonDirective}${langDirective}${beginnerDirective}${scenarioDirective}${freeTalkDirective}${reengageDirective}${placementDirective}${onboardingDirective}${guidedSpeakingDirective}${writingFeedbackDirective}${dailyChallengeDirective}${vocabContext}
 ${curCtx ? `
 CURRICULUM CONTEXT:
 ${curCtx}

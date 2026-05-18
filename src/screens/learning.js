@@ -644,6 +644,31 @@ function renderLearning(container) {
         }
     }
 
+    // ─── LESSON → SPEAKING: scenario picker ───
+    // Maps unit vocab/grammar keywords to the best speaking scenario.
+    // Returns a scenario ID string, or 'free' as fallback.
+    function pickScenarioFromUnit(u) {
+        const KEYWORD_MAP = [
+            { scenario: 'coffee',     keywords: ['coffee', 'tea', 'café', 'cafe', 'food', 'drink', 'restaurant', 'order', 'can i have', 'sandwich', 'cake'] },
+            { scenario: 'restaurant', keywords: ['restaurant', 'menu', 'waiter', 'meal', 'dinner', 'lunch', 'breakfast'] },
+            { scenario: 'airport',    keywords: ['airport', 'flight', 'travel', 'ticket', 'boarding', 'passport', 'hotel', 'directions'] },
+            { scenario: 'shopping',   keywords: ['shopping', 'shop', 'store', 'clothes', 'buy', 'price', 'souvenir', 'market', 'money'] },
+            { scenario: 'doctor',     keywords: ['doctor', 'health', 'hospital', 'medicine', 'sick', 'body', 'pain'] },
+            { scenario: 'interview',  keywords: ['job', 'jobs', 'work', 'interview', 'career', 'office', 'meeting', 'business'] },
+            { scenario: 'roommate',   keywords: ['home', 'house', 'flat', 'roommate', 'daily', 'routine', 'morning', 'evening'] },
+        ];
+        const combined = [
+            ...(u.vocab || []),
+            ...(u.grammar || []),
+            (u.title || ''),
+        ].join(' ').toLowerCase();
+
+        for (const { scenario, keywords } of KEYWORD_MAP) {
+            if (keywords.some(k => combined.includes(k))) return scenario;
+        }
+        return 'free';
+    }
+
     // ─── SUMMARY ───
     function renderSummary(target) {
         const score = totalExercises > 0 ? Math.round((correctAnswers / totalExercises) * 100) : 0;
@@ -804,6 +829,10 @@ function renderLearning(container) {
                 <button class="btn btn--${isCheckpoint && weakUnits.length > 0 ? 'ghost' : 'primary'} btn--xl btn--full" id="summary-finish" style="margin-top:var(--sp-3);">
                     ${LangyIcons.home} ${i18n('results.home')}
                 </button>
+                ${score >= LangyConfig.PASS_THRESHOLD && !isCheckpoint ? `
+                <button class="btn btn--ghost btn--full" id="summary-speak" style="margin-top:var(--sp-2); display:flex; align-items:center; justify-content:center; gap:var(--sp-2);">
+                    ${LangyIcons.mic} ${{ en: 'Practice Speaking', ru: 'Практиковать Speaking', es: 'Practicar Speaking' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}
+                </button>` : ''}
                 ${score < LangyConfig.PASS_THRESHOLD ? `<button class="btn btn--ghost btn--full" id="summary-retry" style="margin-top:var(--sp-2); display:flex; align-items:center; justify-content:center; gap:var(--sp-2);">${LangyIcons.refresh} ${typeof MascotPersona !== 'undefined' ? MascotPersona.tone('retry') : i18n('learn.try_again')}</button>` : ''}
             </div>
         `;
@@ -881,6 +910,37 @@ function renderLearning(container) {
             _destroyed = true;
             Router.navigate('home');
         };
+
+        // ── Lesson → Speaking direct handoff ──
+        target.querySelector('#summary-speak')?.addEventListener('click', () => {
+            _destroyed = true;
+            const scenarioId = pickScenarioFromUnit(unit);
+            const mascotId = LangyState.mascot?.selected || 0;
+            const ll = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
+
+            // Build lesson context string for AI
+            const grammarCtx = (unit.grammar || []).join(', ');
+            const vocabCtx = (unit.vocabulary || unit.vocab || []).join(', ');
+            const lessonContextStr = [
+                `The learner just completed a lesson: "${unit.title}".`,
+                grammarCtx ? `Grammar covered: ${grammarCtx}.` : '',
+                vocabCtx ? `Vocabulary topics: ${vocabCtx}.` : '',
+                'Naturally weave these topics into the conversation when it feels right.',
+                'Do NOT lecture — just make the conversation relevant to what they just studied.',
+            ].filter(Boolean).join(' ');
+
+            // Set ScreenState for direct talk launch
+            ScreenState.set('talkScenario', scenarioId);
+            ScreenState.set('talkMascot', mascotId);
+            ScreenState.set('talkView', 'call'); // skip scenario selection
+            ScreenState.set('lessonContext', lessonContextStr);
+            ScreenState.remove('firstTalkSession');
+            ScreenState.remove('coachFocus');
+            ScreenState.remove('coachFocusTag');
+            ScreenState.remove('coachLoopActive');
+
+            Router.navigate('talk');
+        });
 
         target.querySelector('#summary-retry')?.addEventListener('click', () => {
             currentExerciseIdx = 0;
