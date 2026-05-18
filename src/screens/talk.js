@@ -1171,9 +1171,134 @@ function renderTalkSummary(container) {
                     return '';
                 })()}
 
+                ${(() => {
+                    // ── Recommended Next Session block ──
+                    // Shown only on qualified sessions. Picks exactly one next action from context.
+                    if (!qualified) return '';
+
+                    const currentScenario = summary.scenario || 'coffee';
+                    const allScenarios = ['coffee', 'restaurant', 'airport', 'shopping', 'doctor', 'interview', 'roommate', 'free'];
+                    // Next scenario = different from current (rotate in list order)
+                    const nextScenarioId = allScenarios.find(s => s !== currentScenario) || 'free';
+                    const scenarioNames = {
+                        coffee:     { en: 'Coffee Shop', ru: 'Кофейня', es: 'Cafetería' },
+                        restaurant: { en: 'Restaurant', ru: 'Ресторан', es: 'Restaurante' },
+                        airport:    { en: 'Airport', ru: 'Аэропорт', es: 'Aeropuerto' },
+                        shopping:   { en: 'Shopping', ru: 'Магазин', es: 'Compras' },
+                        doctor:     { en: 'Doctor Visit', ru: 'У врача', es: 'Médico' },
+                        interview:  { en: 'Job Interview', ru: 'Собеседование', es: 'Entrevista' },
+                        roommate:   { en: 'Roommate Chat', ru: 'Разговор дома', es: 'Compañero' },
+                        free:       { en: 'Free Talk', ru: 'Свободная беседа', es: 'Charla libre' },
+                    };
+
+                    let rec = null; // { icon, label, desc, buttonText, action }
+
+                    // Rule 1: Retry succeeded → fresh scenario (new win momentum)
+                    const retryImproved = isCoachingRetrySession && focusRelatedCorrections.length === 0;
+                    if (retryImproved) {
+                        rec = {
+                            icon: LangyIcons.sparkles,
+                            color: 'var(--primary)',
+                            label: { en: 'You improved. Keep it going.', ru: 'Ты прогрессируешь. Продолжай.', es: 'Mejoraste. Sigue así.' }[lang],
+                            desc:  { en: `Try a new scenario — ${scenarioNames[nextScenarioId][lang]}.`, ru: `Попробуй новый сценарий — ${scenarioNames[nextScenarioId][lang]}.`, es: `Prueba otro escenario — ${scenarioNames[nextScenarioId][lang]}.` }[lang],
+                            buttonText: { en: `Start ${scenarioNames[nextScenarioId][lang]}`, ru: `Начать: ${scenarioNames[nextScenarioId][lang]}`, es: `Empezar: ${scenarioNames[nextScenarioId][lang]}` }[lang],
+                            action: 'speak',
+                            scenarioId: nextScenarioId,
+                        };
+                    }
+
+                    // Rule 2: Has weak spot and NOT a retry → practice the focus in same scenario
+                    if (!rec && activeWeakSpot && !isCoachingRetrySession) {
+                        rec = {
+                            icon: LangyIcons.target,
+                            color: '#7C6CF6',
+                            label: { en: `Practice ${activeWeakSpot.label}.`, ru: `Потренируй: ${activeWeakSpot.label}.`, es: `Practica: ${activeWeakSpot.label}.` }[lang],
+                            desc:  { en: `One short session to work on this focus.`, ru: `Одна короткая сессия — специально на этот фокус.`, es: `Una sesión corta dedicada a este foco.` }[lang],
+                            buttonText: { en: 'Practice this focus', ru: 'Практиковать фокус', es: 'Practicar este foco' }[lang],
+                            action: 'speak_focus',
+                            scenarioId: currentScenario,
+                        };
+                    }
+
+                    // Rule 3: Perfect session (no corrections) → push to harder/different scenario
+                    if (!rec && corrections.length === 0) {
+                        const harderIds = ['interview', 'doctor', 'airport', 'free'];
+                        const harderId = harderIds.find(s => s !== currentScenario) || 'interview';
+                        rec = {
+                            icon: LangyIcons.rocket,
+                            color: '#10B981',
+                            label: { en: 'Excellent session. Try something harder.', ru: 'Отличная сессия. Попробуй что-то сложнее.', es: 'Sesión excelente. Prueba algo más difícil.' }[lang],
+                            desc:  { en: `${scenarioNames[harderId][lang]} — a fresh challenge.`, ru: `${scenarioNames[harderId][lang]} — новый вызов.`, es: `${scenarioNames[harderId][lang]} — un nuevo desafío.` }[lang],
+                            buttonText: { en: `Try ${scenarioNames[harderId][lang]}`, ru: `Попробовать: ${scenarioNames[harderId][lang]}`, es: `Probar: ${scenarioNames[harderId][lang]}` }[lang],
+                            action: 'speak',
+                            scenarioId: harderId,
+                        };
+                    }
+
+                    // Rule 4: Has corrections, not first session → suggest lesson to reinforce
+                    if (!rec && !isFirstSession && corrections.length > 0) {
+                        const _tb = typeof LangyCurriculum !== 'undefined' ? LangyCurriculum.getActive() : null;
+                        const _unitId = LangyState.progress?.currentUnitId;
+                        const _unit = _tb?.units?.find(u => u.id === _unitId);
+                        rec = {
+                            icon: LangyIcons.book,
+                            color: '#F59E0B',
+                            label: { en: 'Reinforce with a lesson.', ru: 'Закрепи в уроке.', es: 'Refuerza con una lección.' }[lang],
+                            desc:  _unit
+                                ? { en: `Continue: "${_unit.title}"`, ru: `Продолжить: «${_unit.title}»`, es: `Continuar: "${_unit.title}"` }[lang]
+                                : { en: 'A short lesson will help fix these patterns.', ru: 'Короткий урок поможет закрепить паттерны.', es: 'Una lección corta ayudará a fijar estos patrones.' }[lang],
+                            buttonText: { en: 'Go to lesson', ru: 'Перейти к уроку', es: 'Ir a la lección' }[lang],
+                            action: 'lesson',
+                            scenarioId: null,
+                        };
+                    }
+
+                    // Fallback: first session or unhandled → suggest next speaking session
+                    if (!rec) {
+                        rec = {
+                            icon: LangyIcons.mic,
+                            color: 'var(--primary)',
+                            label: { en: 'Ready for another session?', ru: 'Готов к следующей сессии?', es: '¿Listo para otra sesión?' }[lang],
+                            desc:  { en: `Try ${scenarioNames[nextScenarioId][lang]} next.`, ru: `Попробуй ${scenarioNames[nextScenarioId][lang]}.`, es: `Prueba ${scenarioNames[nextScenarioId][lang]}.` }[lang],
+                            buttonText: { en: `Start ${scenarioNames[nextScenarioId][lang]}`, ru: `Начать: ${scenarioNames[nextScenarioId][lang]}`, es: `Empezar: ${scenarioNames[nextScenarioId][lang]}` }[lang],
+                            action: 'speak',
+                            scenarioId: nextScenarioId,
+                        };
+                    }
+
+                    return `
+                <div id="rec-next-block" style="padding:var(--sp-4); margin-bottom:var(--sp-3); border-radius:var(--radius-md);
+                    background:var(--bg-card); border:1px solid var(--border);
+                    animation:fadeInUp 0.5s var(--ease-out) 0.5s both;">
+                    <div style="display:flex; align-items:flex-start; gap:var(--sp-3);">
+                        <div style="width:32px; height:32px; border-radius:50%; background:${rec.color}15;
+                                    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+                                    color:${rec.color}; font-size:16px;">
+                            ${rec.icon}
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:var(--fw-bold); font-size:var(--fs-sm); color:${rec.color}; margin-bottom:3px;">
+                                ${rec.label}
+                            </div>
+                            <p style="font-size:var(--fs-xs); color:var(--text-tertiary); margin:0 0 var(--sp-3); line-height:1.5;">
+                                ${rec.desc}
+                            </p>
+                            <button class="btn btn--sm" id="rec-next-action"
+                                data-action="${rec.action}"
+                                data-scenario="${rec.scenarioId || ''}"
+                                data-focus="${activeWeakSpot?.tag || ''}"
+                                style="background:${rec.color}15; color:${rec.color}; border:1px solid ${rec.color}30;
+                                       display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs);">
+                                ${rec.buttonText} ${LangyIcons.arrowRight}
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+                })()}
+
                 <!-- Actions -->
                 <div style="display:flex; gap:var(--sp-2); margin-bottom:var(--sp-3);">
-                    <button class="btn btn--primary btn--full" id="talk-again">
+                    <button class="btn btn--ghost btn--full" id="talk-again">
                         ${LangyIcons.refreshCw} ${isFirstSession
                             ? { en: 'Try another topic', ru: 'Другая тема', es: 'Otro tema' }[lang]
                             : { en: 'Talk Again', ru: 'Ещё раз', es: 'Hablar de nuevo' }[lang]}
@@ -1200,6 +1325,43 @@ function renderTalkSummary(container) {
         }
         renderTalk(container);
     });
+
+    // Recommended Next: one-tap launch handler
+    container.querySelector('#rec-next-action')?.addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        const action = btn.dataset.action;
+        const scenarioId = btn.dataset.scenario || 'free';
+        const focusTag = btn.dataset.focus;
+
+        // Clear previous session state
+        ScreenState.remove('coachFocus');
+        ScreenState.remove('coachFocusTag');
+        ScreenState.remove('coachLoopActive');
+        ScreenState.remove('coachLoopFocus');
+
+        if (action === 'lesson') {
+            // Go directly to lesson (current unit)
+            ScreenState.remove('talkView');
+            Router.navigate('learning');
+        } else if (action === 'speak_focus' && focusTag && activeWeakSpot) {
+            // Launch same scenario with weak spot injected as coach focus
+            ScreenState.set('talkScenario', scenarioId);
+            ScreenState.set('talkMascot', mascotId);
+            ScreenState.set('talkView', 'call');
+            ScreenState.set('coachLoopFocus', activeWeakSpot);
+            ScreenState.set('coachLoopActive', true);
+            ScreenState.set('coachFocus', activeWeakSpot.label);
+            ScreenState.set('coachFocusTag', activeWeakSpot.tag);
+            renderTalk(container);
+        } else {
+            // speak: new scenario, direct to call
+            ScreenState.set('talkScenario', scenarioId);
+            ScreenState.set('talkMascot', mascotId);
+            ScreenState.set('talkView', 'call');
+            renderTalk(container);
+        }
+    });
+
 
     container.querySelector('#talk-done')?.addEventListener('click', () => {
         ScreenState.remove('talkView');
