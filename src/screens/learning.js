@@ -252,6 +252,15 @@ function renderLearning(container) {
             slideContent = `<div class="teach-compare"><div class="teach-col"><div class="teach-col__label">${slide.left.label}</div>${slide.left.items.map(i => `<div class="teach-col__item">${i}</div>`).join('')}</div><div class="teach-vs">VS</div><div class="teach-col teach-col--accent"><div class="teach-col__label">${slide.right.label}</div>${slide.right.items.map(i => `<div class="teach-col__item">${i}</div>`).join('')}</div></div>`;
         } else if (slide.type === 'vocab-intro' && slide.words) {
             slideContent = `<div class="teach-vocab-grid">${slide.words.map(w => `<div class="teach-vocab-card"><div class="teach-vocab-card__en">${w.en}</div><div class="teach-vocab-card__ru">${w.ru}</div></div>`).join('')}</div>`;
+            // ── VocabMastery: mark shown words as seen (silent) ──
+            if (typeof VocabMastery !== 'undefined' && typeof LangyVocabBank !== 'undefined' && activeTb?.cefr) {
+                const allWords = LangyVocabBank[activeTb.cefr]?.getAllWords?.() || [];
+                const slideTargets = new Set(slide.words.map(w => (w.en || w.target || '').toLowerCase()));
+                const ids = allWords
+                    .filter(w => slideTargets.has((w.target || w.en || '').toLowerCase()))
+                    .map(w => w.id).filter(Boolean);
+                if (ids.length) VocabMastery.markSeenBatch(ids);
+            }
         } else if (slide.type === 'quiz-check') {
             slideContent = `<div class="teach-quiz" id="teach-quiz">${(slide.options || []).map((o, i) => `<button class="btn btn--secondary teach-quiz__opt" data-idx="${i}">${o}</button>`).join('')}</div>`;
         } else if (slide.type === 'tip') {
@@ -845,6 +854,13 @@ function renderLearning(container) {
         if (typeof VocabTracker !== 'undefined' && activeTb?.cefr) {
             const unitVocab = typeof LangyVocabBank !== 'undefined' ? LangyVocabBank.getForUnit(activeTb.cefr, unit.id) : [];
             VocabTracker.recordUnitWords(activeTb.cefr, unit.id, unitVocab, { allCorrect: score >= LangyConfig.PASS_THRESHOLD });
+        }
+        // ── VocabMastery: mark all unit vocab words as seen (silent, no UI) ──
+        if (typeof VocabMastery !== 'undefined' && typeof LangyVocabBank !== 'undefined' && activeTb?.cefr) {
+            const unitVocabIds = LangyVocabBank.getForUnit(activeTb.cefr, unit.id)
+                .map(w => w.id)
+                .filter(Boolean);
+            if (unitVocabIds.length) VocabMastery.markSeenBatch(unitVocabIds);
         }
 
         // Generate homework for next lesson
