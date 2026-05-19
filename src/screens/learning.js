@@ -830,8 +830,13 @@ function renderLearning(container) {
                     ${LangyIcons.home} ${i18n('results.home')}
                 </button>
                 ${score >= LangyConfig.PASS_THRESHOLD && !isCheckpoint ? `
-                <button class="btn btn--ghost btn--full" id="summary-speak" style="margin-top:var(--sp-2); display:flex; align-items:center; justify-content:center; gap:var(--sp-2);">
-                    ${LangyIcons.mic} ${{ en: 'Practice Speaking', ru: 'Практиковать Speaking', es: 'Practicar Speaking' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}
+                <button class="btn btn--ghost btn--full" id="summary-speak" style="margin-top:var(--sp-2); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:var(--sp-3);">
+                    <div style="display:flex; align-items:center; gap:var(--sp-2);">
+                        ${LangyIcons.mic} ${{ en: 'Talk about this lesson', ru: 'Поговорить по теме урока', es: 'Hablar sobre esta lección' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}
+                    </div>
+                    <div style="font-size:var(--fs-xs); opacity:0.65; font-weight:var(--fw-medium);">
+                        ${{ en: `with ${typeof TalkEngine !== 'undefined' ? (TalkEngine.personas[LangyState.mascot?.selected || 0]?.name || 'your tutor') : 'your tutor'} · ~2 min`, ru: `с ${typeof TalkEngine !== 'undefined' ? (TalkEngine.personas[LangyState.mascot?.selected || 0]?.name || 'тьютором') : 'тьютором'} · ~2 мин`, es: `con ${typeof TalkEngine !== 'undefined' ? (TalkEngine.personas[LangyState.mascot?.selected || 0]?.name || 'tu tutor') : 'tu tutor'} · ~2 min` }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}
+                    </div>
                 </button>` : ''}
                 ${score < LangyConfig.PASS_THRESHOLD ? `<button class="btn btn--ghost btn--full" id="summary-retry" style="margin-top:var(--sp-2); display:flex; align-items:center; justify-content:center; gap:var(--sp-2);">${LangyIcons.refresh} ${typeof MascotPersona !== 'undefined' ? MascotPersona.tone('retry') : i18n('learn.try_again')}</button>` : ''}
             </div>

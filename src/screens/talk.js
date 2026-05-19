@@ -4,10 +4,8 @@
    ============================================ */
 
 function renderTalk(container) {
-    // ─── First Talk Session: show warm intro before jumping into call ───
-    if (ScreenState.get('firstTalkSession')) {
-        renderFirstTalkIntro(container);
-    } else if (ScreenState.get('talkView') === 'call') {
+    // ─── First Talk Session: go straight to call — tip shown as inline banner ───
+    if (ScreenState.get('talkView') === 'call' || ScreenState.get('firstTalkSession')) {
         renderTalkCall(container);
     } else if (ScreenState.get('talkView') === 'summary') {
         renderTalkSummary(container);
@@ -270,6 +268,18 @@ function renderTalkCall(container) {
     const color = colors[mascotId] || '#10B981';
     const minTurns = TalkEngine.REWARD_MIN_TURNS;
 
+    // ── First-session tip banner (replaces old intro screen) ──
+    const isFirstTalkSession = !!ScreenState.get('firstTalkSession');
+    const _ftLang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
+    const _ftConfidence = LangyState.user.confidenceLevel || 'intermediate';
+    const _ftTips = {
+        zero:         { en: "Don't worry about mistakes — just try. I'll help.", ru: 'Не волнуйся из-за ошибок — просто попробуй. Я помогу.', es: 'No te preocupes por errores — solo intenta. Te ayudaré.' },
+        basic:        { en: "Use simple phrases — I'll guide you when you get stuck.", ru: 'Используй простые фразы — я помогу, если застрянешь.', es: 'Usa frases simples — te guiaré si te atascas.' },
+        intermediate: { en: "Just talk naturally. I'll gently correct as we go.", ru: 'Говори естественно. Я мягко исправлю по ходу.', es: 'Habla con naturalidad. Corregiré suavemente.' },
+        advanced:     { en: "Let's have a real conversation. I'll push you with nuance.", ru: 'Поговорим по-настоящему. Буду добавлять нюансы.', es: 'Una conversación real. Te restaré con matices.' },
+    };
+    const _ftTip = (_ftTips[_ftConfidence] || _ftTips.intermediate)[_ftLang];
+
     container.innerHTML = `
         <div class="screen screen--no-pad talk-call" style="background:var(--bg); display:flex; flex-direction:column;">
             
@@ -295,6 +305,16 @@ function renderTalkCall(container) {
                 </span>
             </div>`;
             })()}
+
+            ${isFirstTalkSession ? `
+            <div id="first-talk-tip-banner" style="display:flex; align-items:center; gap:10px;
+                padding:8px var(--sp-5);
+                background:linear-gradient(135deg, var(--primary-bg), transparent);
+                border-bottom:1px solid var(--border);
+                transition:opacity 0.4s ease;">
+                <span style="color:var(--primary); font-size:13px; flex-shrink:0;">${LangyIcons.info}</span>
+                <span style="font-size:var(--fs-xs); color:var(--text-secondary); line-height:1.4;">${_ftTip}</span>
+            </div>` : ''}
 
             <!-- Progress Bar -->
             <div class="talk-progress" id="talk-progress" style="padding:0 var(--sp-5); margin-bottom:var(--sp-2);">
@@ -438,13 +458,15 @@ function renderTalkCall(container) {
     function startHintTimer() {
         clearTimeout(hintTimeout);
         hideHint();
+        // First-session learners get a shorter hint delay — they freeze earlier
+        const hintDelay = isFirstTalkSession ? 15000 : 30000;
         hintTimeout = setTimeout(() => {
             if (state === 'waiting') {
                 const hint = TalkEngine.getRandomHint(scenarioId);
                 if (hintTextEl) hintTextEl.textContent = `"${hint}"`;
                 if (hintEl) hintEl.style.display = 'block';
             }
-        }, 30000); // 30 seconds
+        }, hintDelay);
     }
 
     function hideHint() {
@@ -472,6 +494,14 @@ function renderTalkCall(container) {
             setStatus('Your turn \u2014 tap mic to speak');
             micBtn?.classList.add('talk-call__btn--mic-pulse');
             startHintTimer();
+
+            // After opener finishes: fade out first-session tip and clear the flag
+            const _tipBanner = container.querySelector('#first-talk-tip-banner');
+            if (_tipBanner) {
+                _tipBanner.style.opacity = '0';
+                setTimeout(() => _tipBanner?.remove(), 420);
+                ScreenState.remove('firstTalkSession');
+            }
         });
     }
 
@@ -1178,8 +1208,9 @@ function renderTalkSummary(container) {
 
                     const currentScenario = summary.scenario || 'coffee';
                     const allScenarios = ['coffee', 'restaurant', 'airport', 'shopping', 'doctor', 'interview', 'roommate', 'free'];
-                    // Next scenario = different from current (rotate in list order)
-                    const nextScenarioId = allScenarios.find(s => s !== currentScenario) || 'free';
+                    // Rotate by session count — never sticks to the same pair
+                    const _others = allScenarios.filter(s => s !== currentScenario);
+                    const nextScenarioId = _others[(LangyState.talkHistory || []).length % _others.length] || 'free';
                     const scenarioNames = {
                         coffee:     { en: 'Coffee Shop', ru: 'Кофейня', es: 'Cafetería' },
                         restaurant: { en: 'Restaurant', ru: 'Ресторан', es: 'Restaurante' },
