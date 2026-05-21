@@ -1081,60 +1081,44 @@ function renderTalkSummary(container) {
                     if (_isCoach && typeof CoachIntel !== 'undefined') {
                         return CoachIntel.renderSummaryMemory(corrections, lang);
                     }
-                    // Free: soft coach prompt on session 2+ only — English-specific curriculum framing
+                    // Free: blurred Coach Memory teaser from session 2+
+                    // Shows real pattern data behind a lock — concrete, not hypothetical
                     if (!_isCoach && !isFirstSession && sessionCount >= 2 && qualified) {
-                        const _isEn = typeof LangyTarget !== 'undefined' && LangyTarget.getCode() === 'en';
-                        const _tb = typeof LangyCurriculum !== 'undefined' ? LangyCurriculum.getActive() : null;
-                        const firstWhy = corrections.length > 0 && corrections[0].why ? corrections[0].why : null;
-                        let _promptText;
-                        if (_isEn && _tb?.cefr && firstWhy) {
-                            // English + correction → tie to curriculum objective
-                            const _unitId = LangyState.progress?.currentUnitId || 1;
-                            const _unit = _tb.units?.find(u => u.id === _unitId);
-                            const _grammarHint = _unit?.grammar?.[0] || firstWhy;
-                            _promptText = {
-                                en: `You're working on ${_tb.cefr} (${_grammarHint}). Coach would track this correction across sessions and build drills until it sticks — so you actually master it.`,
-                                ru: `Ты работаешь над ${_tb.cefr} (${_grammarHint}). Coach отслеживал бы это исправление между сессиями и строил практику до полного освоения.`,
-                                es: `Estás trabajando en ${_tb.cefr} (${_grammarHint}). Coach rastrearía esta corrección entre sesiones y crearía práctica hasta dominarla.`,
-                            }[lang];
-                        } else if (_isEn && _tb?.cefr) {
-                            // English but no correction → tie to can-do goals
-                            const _nextGoal = _tb.canDo?.[0] || '';
-                            _promptText = {
-                                en: `${sessionCount} sessions toward ${_tb.cefr}.${_nextGoal ? ` Goal: "${_nextGoal.length > 50 ? _nextGoal.slice(0,47) + '...' : _nextGoal}".` : ''} Coach would connect every session to this goal.`,
-                                ru: `${sessionCount} сессий к ${_tb.cefr}. Coach связал бы каждую сессию с целями уровня.`,
-                                es: `${sessionCount} sesiones hacia ${_tb.cefr}. Coach conectaría cada sesión con tus objetivos.`,
-                            }[lang];
-                        } else if (firstWhy) {
-                            _promptText = {
-                                en: `You made corrections in ${firstWhy} today. With Coach, your AI would track this across sessions and build targeted practice.`,
-                                ru: `Сегодня были исправления: ${firstWhy}. С Coach твой ИИ будет отслеживать это между сессиями.`,
-                                es: `Hoy hubo correcciones en ${firstWhy}. Con Coach, tu IA rastreará esto entre sesiones.`,
-                            }[lang];
-                        } else {
-                            _promptText = {
-                                en: `You've completed ${sessionCount} sessions. With Coach, your AI would remember all of them and help you improve faster.`,
-                                ru: `Ты завершил ${sessionCount} сессий. С Coach твой ИИ запомнит их все и поможет прогрессировать быстрее.`,
-                                es: `Has completado ${sessionCount} sesiones. Con Coach, tu IA recordaría todas y te ayudaría a mejorar más rápido.`,
-                            }[lang];
-                        }
+                        const _tp = (LangyState.coachData?.mistakePatterns || []).slice(0, 2);
+                        const _sc = { recurring: '#F59E0B', needs_work: '#EF4444', improving: '#10B981', new: 'var(--text-tertiary)' };
+                        const _sl = {
+                            recurring: { en: 'Recurring', ru: 'Повторяется', es: 'Recurrente' },
+                            needs_work: { en: 'Needs work', ru: 'Нужна практика', es: 'Necesita práctica' },
+                            improving:  { en: 'Improving', ru: 'Улучшается', es: 'Mejorando' },
+                            new:        { en: 'Seen once', ru: 'Один раз', es: 'Visto una vez' },
+                        };
+                        const _st = p => p.count >= 3 ? 'needs_work' : p.count >= 2 ? 'recurring' : 'new';
+                        const _rows = _tp.length > 0
+                            ? _tp.map(p => {
+                                const s = _st(p);
+                                const l = p.tag.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:var(--fs-sm);filter:blur(2.5px);user-select:none;pointer-events:none;"><span style="width:6px;height:6px;border-radius:50%;background:${_sc[s]};flex-shrink:0;"></span><span style="color:var(--text-secondary);flex:1;">${l}</span><span style="font-size:var(--fs-xs);color:${_sc[s]};font-weight:var(--fw-semibold);">${(_sl[s]||_sl.new)[lang]}</span><span style="font-size:var(--fs-xs);color:var(--text-tertiary);">×${p.count}</span></div>`;
+                              }).join('')
+                            : `<div style="filter:blur(3px);user-select:none;pointer-events:none;font-size:var(--fs-sm);color:var(--text-tertiary);padding:6px 0;">${{ en: 'Articles — Recurring ×3', ru: 'Артикли — Повторяется ×3', es: 'Artículos — Recurrente ×3' }[lang]}</div>`;
                         return `
-                <div id="coach-upsell" style="padding:var(--sp-4); margin-bottom:var(--sp-3); border-radius:var(--radius-md);
-                    background:var(--bg-card); border-left:3px solid var(--primary);
-                    animation:fadeInUp 0.5s var(--ease-out) 0.45s both; cursor:pointer;"
+                <div id="coach-upsell" style="padding:var(--sp-4);margin-bottom:var(--sp-3);border-radius:var(--radius-lg);
+                    background:var(--coach-bg,rgba(124,108,246,0.05));border:1px solid rgba(124,108,246,0.15);
+                    animation:fadeInUp 0.5s var(--ease-out) 0.45s both;cursor:pointer;"
                     onclick="Router.navigate('subscription')">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:var(--sp-2);">
-                        <span style="color:var(--primary); font-size:16px;">${LangyIcons.brain}</span>
-                        <span style="font-weight:var(--fw-bold); font-size:var(--fs-sm); color:var(--primary);">
-                            ${{ en: 'Session insight', ru: 'Наблюдение', es: 'Observación' }[lang]}
-                        </span>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:var(--sp-3);">
+                        <span style="color:#7C6CF6;font-size:16px;">${LangyIcons.brain}</span>
+                        <span style="font-weight:var(--fw-bold);font-size:var(--fs-xs);color:#7C6CF6;text-transform:uppercase;letter-spacing:0.4px;">${{ en: 'Coach Memory', ru: 'Память Coach', es: 'Memoria del Coach' }[lang]}</span>
                     </div>
-                    <p style="font-size:var(--fs-sm); color:var(--text-secondary); margin:0 0 var(--sp-2); line-height:1.5;">
-                        ${_promptText}
-                    </p>
-                    <span style="font-size:var(--fs-xs); color:var(--primary); font-weight:var(--fw-bold);">
-                        ${{ en: 'Learn more →', ru: 'Подробнее →', es: 'Más info →' }[lang]}
-                    </span>
+                    <div style="margin-bottom:var(--sp-3);">${_rows}</div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:var(--sp-3) var(--sp-4);
+                        background:rgba(124,108,246,0.08);border-radius:var(--radius-sm);border:1px dashed rgba(124,108,246,0.3);">
+                        <span style="font-size:14px;">🔒</span>
+                        <div style="flex:1;">
+                            <div style="font-size:var(--fs-xs);font-weight:var(--fw-bold);color:#7C6CF6;margin-bottom:2px;">${{ en: 'Unlock Coach to track your patterns', ru: 'Разблокируй Coach для отслеживания', es: 'Desbloquea Coach para rastrear tus patrones' }[lang]}</div>
+                            <div style="font-size:var(--fs-xs);color:var(--text-tertiary);">${{ en: 'Full history + targeted practice', ru: 'Полная история + целевые упражнения', es: 'Historial completo + ejercicios dirigidos' }[lang]}</div>
+                        </div>
+                        <span style="font-size:var(--fs-xs);color:#7C6CF6;font-weight:var(--fw-bold);white-space:nowrap;">Coach →</span>
+                    </div>
                 </div>`;
                     }
                     return '';
