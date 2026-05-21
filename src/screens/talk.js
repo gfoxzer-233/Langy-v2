@@ -262,7 +262,7 @@ function renderTalkCall(container) {
 
                 <!-- Auto-hint (shown after 30s silence) -->
                 <div id="talk-hint" class="talk-hint" style="display:none;">
-                    <div style="font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:var(--sp-2);">Not sure what to say? Try:</div>
+                    <div style="font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:var(--sp-2);">You could say:</div>
                     <div id="hint-text" style="font-weight:var(--fw-semibold); font-size:var(--fs-sm); margin-bottom:var(--sp-2);"></div>
                     <button class="btn btn--secondary btn--sm" id="hint-use">Use this phrase</button>
                 </div>
@@ -746,18 +746,11 @@ function renderTalkSummary(container) {
 
     // Coaching next-step (personalized, not generic)
     const goal = LangyState.user?.goal || 'speak';
-    const nextScenario = (() => {
-        const scenarioSuggestions = {
-            speak: { en: 'Coffee Shop', ru: 'Кофейня', es: 'Cafetería' },
-            work: { en: 'Job Interview', ru: 'Собеседование', es: 'Entrevista' },
-            travel: { en: 'At the Airport', ru: 'В аэропорту', es: 'En el aeropuerto' },
-            exam: { en: 'Free Talk', ru: 'Свободный разговор', es: 'Charla libre' },
-        };
-        const current = summary.scenario || '';
-        const suggestions = Object.values(scenarioSuggestions);
-        const different = suggestions.find(s => s.en !== current) || suggestions[0];
-        return different[lang];
-    })();
+    // Next scenario: read from recommendedNext chain (matches action button)
+    const _currentScenarioDef = TalkEngine.scenarios.find(s => s.id === (summary.scenario || 'coffee'));
+    const _nextScenarioId = _currentScenarioDef?.recommendedNext || 'restaurant';
+    const _nextScenarioDef = TalkEngine.scenarios.find(s => s.id === _nextScenarioId);
+    const nextScenario = _nextScenarioDef?.title || 'Restaurant';
 
     const nextStep = (() => {
         if (!qualified) {
@@ -769,9 +762,9 @@ function renderTalkSummary(container) {
         }
         if (isFirstSession) {
             return {
-                en: `Come back tomorrow and try "${nextScenario}" — ${mascotName} will remember your progress.`,
-                ru: `Возвращайся завтра и попробуй «${nextScenario}» — ${mascotName} запомнит твой прогресс.`,
-                es: `Vuelve mañana y prueba "${nextScenario}" — ${mascotName} recordará tu progreso.`,
+                en: `Great first session! Ready to keep going? Try "${nextScenario}" next — ${mascotName} is cheering you on.`,
+                ru: `Отличная первая сессия! Попробуй «${nextScenario}» — ${mascotName} болеет за тебя.`,
+                es: `¡Gran primera sesión! ¿Listo para seguir? Prueba "${nextScenario}" ahora — ${mascotName} te está animando.`,
             }[lang];
         }
         if (corrections.length === 0) {
