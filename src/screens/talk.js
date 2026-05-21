@@ -1097,9 +1097,9 @@ function renderTalkSummary(container) {
                             ? _tp.map(p => {
                                 const s = _st(p);
                                 const l = p.tag.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:var(--fs-sm);filter:blur(2.5px);user-select:none;pointer-events:none;"><span style="width:6px;height:6px;border-radius:50%;background:${_sc[s]};flex-shrink:0;"></span><span style="color:var(--text-secondary);flex:1;">${l}</span><span style="font-size:var(--fs-xs);color:${_sc[s]};font-weight:var(--fw-semibold);">${(_sl[s]||_sl.new)[lang]}</span><span style="font-size:var(--fs-xs);color:var(--text-tertiary);">×${p.count}</span></div>`;
+                                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:var(--fs-sm);filter:blur(1.5px);opacity:0.5;user-select:none;pointer-events:none;"><span style="width:6px;height:6px;border-radius:50%;background:${_sc[s]};flex-shrink:0;"></span><span style="color:var(--text-secondary);flex:1;">${l}</span><span style="font-size:var(--fs-xs);color:${_sc[s]};font-weight:var(--fw-semibold);">${(_sl[s]||_sl.new)[lang]}</span><span style="font-size:var(--fs-xs);color:var(--text-tertiary);">×${p.count}</span></div>`;
                               }).join('')
-                            : `<div style="filter:blur(3px);user-select:none;pointer-events:none;font-size:var(--fs-sm);color:var(--text-tertiary);padding:6px 0;">${{ en: 'Articles — Recurring ×3', ru: 'Артикли — Повторяется ×3', es: 'Artículos — Recurrente ×3' }[lang]}</div>`;
+                            : `<div style="filter:blur(1.5px);opacity:0.5;user-select:none;pointer-events:none;font-size:var(--fs-sm);color:var(--text-tertiary);padding:6px 0;">${{ en: 'Articles — Recurring ×3', ru: 'Артикли — Повторяется ×3', es: 'Artículos — Recurrente ×3' }[lang]}</div>`;
                         return `
                 <div id="coach-upsell" style="padding:var(--sp-4);margin-bottom:var(--sp-3);border-radius:var(--radius-lg);
                     background:var(--coach-bg,rgba(124,108,246,0.05));border:1px solid rgba(124,108,246,0.15);
@@ -1114,10 +1114,10 @@ function renderTalkSummary(container) {
                         background:rgba(124,108,246,0.08);border-radius:var(--radius-sm);border:1px dashed rgba(124,108,246,0.3);">
                         <span style="font-size:14px;">🔒</span>
                         <div style="flex:1;">
-                            <div style="font-size:var(--fs-xs);font-weight:var(--fw-bold);color:#7C6CF6;margin-bottom:2px;">${{ en: 'Unlock Coach to track your patterns', ru: 'Разблокируй Coach для отслеживания', es: 'Desbloquea Coach para rastrear tus patrones' }[lang]}</div>
-                            <div style="font-size:var(--fs-xs);color:var(--text-tertiary);">${{ en: 'Full history + targeted practice', ru: 'Полная история + целевые упражнения', es: 'Historial completo + ejercicios dirigidos' }[lang]}</div>
+                            <div style="font-size:var(--fs-xs);font-weight:var(--fw-bold);color:#7C6CF6;margin-bottom:2px;">${{ en: 'See what\'s holding you back — and fix it', ru: 'Узнай, что мешает прогрессу — и исправь', es: 'Descubre qué te frena — y corrígelo' }[lang]}</div>
+                            <div style="font-size:var(--fs-xs);color:var(--text-tertiary);line-height:1.4;">${{ en: 'Your coach remembers every session and builds focused practice around your weak spots', ru: 'Coach запомнит каждую сессию и выстроит практику вокруг твоих слабых мест', es: 'Tu coach recuerda cada sesión y crea práctica enfocada en tus puntos débiles' }[lang]}</div>
                         </div>
-                        <span style="font-size:var(--fs-xs);color:#7C6CF6;font-weight:var(--fw-bold);white-space:nowrap;">Coach →</span>
+                        <span style="font-size:var(--fs-xs);color:#7C6CF6;font-weight:var(--fw-bold);white-space:nowrap;">${{ en: 'Unlock Coach →', ru: 'Открыть Coach →', es: 'Desbloquear Coach →' }[lang]}</span>
                     </div>
                 </div>`;
                     }
