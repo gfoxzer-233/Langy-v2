@@ -888,6 +888,16 @@ function renderTalkSummary(container) {
                         </div>
                         <div style="flex:1;">
                             <div style="font-weight:var(--fw-bold); font-size:var(--fs-sm); color:#7C6CF6; margin-bottom:6px;">
+                                ${(() => {
+                                    // Trend signal: compare current count vs prevCount in persisted patterns
+                                    const _p = LangyState.coachData?.mistakePatterns?.find(p => p.tag === activeWeakSpot.tag);
+                                    if (!_p || _p.count <= 1) return ''; // first time — no trend yet
+                                    const isImproving = _p.count === _p.prevCount; // no new error this session
+                                    const isRecurring = _p.count >= _p.prevCount + 2; // appeared 2+ times more
+                                    if (isImproving) return `<span style="font-size:10px; color:#4ADE80; font-weight:var(--fw-semibold); margin-left:6px;">&#x2197; ${{ en: 'improving', ru: 'прогресс', es: 'mejorando' }[lang]}</span>`;
+                                    if (isRecurring) return `<span style="font-size:10px; color:#F59E0B; font-weight:var(--fw-semibold); margin-left:6px;">&#9888; ${{ en: 'recurring', ru: 'повторяется', es: 'recurrente' }[lang]}</span>`;
+                                    return `<span style="font-size:10px; color:var(--text-tertiary); margin-left:6px;">${{ en: 'seen again', ru: 'снова', es: 'otra vez' }[lang]}</span>`;
+                                })()}
                                 ${{ en: 'Coach focus for now', ru: 'Фокус коуча на сейчас', es: 'Enfoque del coach ahora' }[lang]}
                             </div>
                             <p style="font-size:var(--fs-sm); color:var(--text-secondary); margin:0 0 var(--sp-2);">
@@ -1319,7 +1329,11 @@ function renderTalkSummary(container) {
             ScreenState.set('coachFocusTag', activeWeakSpot.tag);
             renderTalk(container);
         } else {
-            // speak: new scenario, direct to call
+            // speak: new scenario — carry weak spot lightly as coach awareness (not a retry loop)
+            if (activeWeakSpot) {
+                ScreenState.set('coachFocus', activeWeakSpot.label);
+                ScreenState.set('coachFocusTag', activeWeakSpot.tag);
+            }
             ScreenState.set('talkScenario', scenarioId);
             ScreenState.set('talkMascot', mascotId);
             ScreenState.set('talkView', 'call');

@@ -1058,12 +1058,24 @@ The learner is starting a daily challenge or returning for a short practice mome
         // Vocab context for AI (inject suggested words naturally)
         const vocabContext = typeof VocabSpeaking !== 'undefined' ? VocabSpeaking.getAIVocabContext(scenarioId) : '';
 
+        // Cross-session continuity note (sessions 2+): surface top persisted mistake pattern to the AI
+        const _sessionsSoFar = (LangyState?.talkHistory || []).length;
+        const _topPattern = _sessionsSoFar >= 1 ? LangyState?.coachData?.mistakePatterns?.[0] : null;
+        const continuityDirective = _topPattern ? `
+
+CROSS-SESSION CONTINUITY:
+The learner has a recurring pattern across sessions: ${_topPattern.tag} (seen ${_topPattern.count} time${_topPattern.count !== 1 ? 's' : ''} across sessions).
+- If this pattern comes up naturally in conversation, gently model the correct version — keep it brief and conversational.
+- Do NOT lecture or highlight the pattern explicitly. Simply produce correct examples when relevant.
+- If the learner gets it right, a brief natural acknowledgment is fine. Keep momentum high.
+- Continuity priority: light touch, forward momentum, confidence preservation.` : '';
+
         const systemPrompt = `${persona.systemPrompt}
 
 CURRENT SCENARIO: ${scenario.title} — ${scenario.desc}
 STUDENT LEVEL: ${level}
 STUDENT NAME: ${LangyState?.user?.name || 'Student'}
-TARGET LANGUAGE: ${targetLang === 'ar' ? 'Arabic (MSA)' : targetLang === 'es' ? 'Spanish' : 'English'}${coachDirective}${lessonDirective}${langDirective}${beginnerDirective}${scenarioDirective}${freeTalkDirective}${reengageDirective}${placementDirective}${onboardingDirective}${guidedSpeakingDirective}${writingFeedbackDirective}${dailyChallengeDirective}${vocabContext}
+TARGET LANGUAGE: ${targetLang === 'ar' ? 'Arabic (MSA)' : targetLang === 'es' ? 'Spanish' : 'English'}${coachDirective}${lessonDirective}${langDirective}${beginnerDirective}${scenarioDirective}${freeTalkDirective}${reengageDirective}${placementDirective}${onboardingDirective}${guidedSpeakingDirective}${writingFeedbackDirective}${dailyChallengeDirective}${continuityDirective}${vocabContext}
 ${curCtx ? `
 CURRICULUM CONTEXT:
 ${curCtx}
