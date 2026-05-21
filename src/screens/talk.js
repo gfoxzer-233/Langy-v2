@@ -153,7 +153,7 @@ function renderTalkSelect(container) {
 // ═══════════════════════════════════════
 function renderTalkCall(container) {
     const mascotId = ScreenState.get('talkMascot') ?? LangyState.mascot?.selected ?? 0;
-    const scenarioId = ScreenState.get('talkScenario', 'free');
+    const scenarioId = ScreenState.get('talkScenario', 'coffee');
     if (!LangyState.user.firstSpeakingScenarioStarted) {
         LangyState.user.firstSpeakingScenarioStarted = true;
         if (!LangyState.user.firstSpeakingScenarioId) {
@@ -1108,9 +1108,12 @@ function renderTalkSummary(container) {
 
                     const currentScenario = summary.scenario || 'coffee';
                     const allScenarios = ['coffee', 'restaurant', 'airport', 'shopping', 'doctor', 'interview', 'roommate', 'free'];
-                    // Rotate by session count — never sticks to the same pair
+                    // Use recommendedNext from scenario definition; fall back to rotation
                     const _others = allScenarios.filter(s => s !== currentScenario);
-                    const nextScenarioId = _others[(LangyState.talkHistory || []).length % _others.length] || 'free';
+                    const _scenarioDef = TalkEngine.scenarios.find(s => s.id === currentScenario);
+                    const nextScenarioId = _scenarioDef?.recommendedNext
+                        || _others[(LangyState.talkHistory || []).length % _others.length]
+                        || 'restaurant';
                     const scenarioNames = {
                         coffee:     { en: 'Coffee Shop', ru: 'Кофейня', es: 'Cafetería' },
                         restaurant: { en: 'Restaurant', ru: 'Ресторан', es: 'Restaurante' },
