@@ -170,6 +170,7 @@ function renderTalkCall(container) {
 
     // ── First-session tip banner (replaces old intro screen) ──
     const isFirstTalkSession = !!ScreenState.get('firstTalkSession');
+    const _earlySessionCount = (LangyState.talkHistory || []).length + 1; // 1-indexed current session
     const _ftLang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
     const _ftConfidence = LangyState.user.confidenceLevel || 'intermediate';
     const _ftTips = {
@@ -358,8 +359,8 @@ function renderTalkCall(container) {
     function startHintTimer() {
         clearTimeout(hintTimeout);
         hideHint();
-        // First-session learners get a shorter hint delay — they freeze earlier
-        const hintDelay = isFirstTalkSession ? 15000 : 30000;
+        // Early learners (sessions 1–3) get a shorter hint delay — they freeze sooner
+        const hintDelay = (isFirstTalkSession || _earlySessionCount <= 3) ? 15000 : 30000;
         hintTimeout = setTimeout(() => {
             if (state === 'waiting') {
                 const hint = TalkEngine.getRandomHint(scenarioId);
@@ -815,6 +816,41 @@ function renderTalkSummary(container) {
                     ${typeof MascotPersona !== 'undefined' ? `<p style="font-style:italic; color:var(--text-secondary); font-size:var(--fs-sm); margin-top:var(--sp-1);">"${qualified ? MascotPersona.tone('lessonComplete', mascotId) : MascotPersona.tone('encouragement', mascotId)}"</p>` : ''}
                 </div>
 
+                ${(() => {
+                    // 3-step path strip — visible only for sessions 1–3
+                    if (sessionCount > 3) return '';
+                    const _cs = summary.scenario || 'coffee';
+                    const _csDef = TalkEngine.scenarios.find(s => s.id === _cs);
+                    const _nextId = _csDef?.recommendedNext || 'restaurant';
+                    const _nextDef = TalkEngine.scenarios.find(s => s.id === _nextId);
+                    const _nextNextId = _nextDef?.recommendedNext || 'shopping';
+                    const _nextNextDef = TalkEngine.scenarios.find(s => s.id === _nextNextId);
+                    const _prevDef = TalkEngine.scenarios.find(s => s.recommendedNext === _cs);
+                    // Build 3 steps: prev (done) → current (here) → next (up)
+                    const _steps = _prevDef
+                        ? [{ def: _prevDef, state: 'done' }, { def: _csDef, state: 'current' }, { def: _nextDef, state: 'next' }]
+                        : [{ def: _csDef, state: 'current' }, { def: _nextDef, state: 'next' }, { def: _nextNextDef, state: 'upcoming' }];
+                    const _stepHtml = _steps.map((step, i) => {
+                        if (!step.def) return '';
+                        const isDone = step.state === 'done';
+                        const isCurrent = step.state === 'current';
+                        const dot = isDone ? '✓' : isCurrent ? '●' : '○';
+                        const dotColor = isDone ? '#4ADE80' : isCurrent ? mascotColor : 'var(--text-tertiary)';
+                        const labelColor = isDone ? '#4ADE80' : isCurrent ? mascotColor : 'var(--text-tertiary)';
+                        const labelWeight = isCurrent ? 'var(--fw-bold)' : 'var(--fw-normal)';
+                        return `<div style="display:flex; align-items:center; gap:4px;">
+                            <span style="font-size:10px; color:${dotColor};">${dot}</span>
+                            <span style="font-size:var(--fs-xs); color:${labelColor}; font-weight:${labelWeight};">${step.def.title}</span>
+                        </div>${i < _steps.length - 1 ? `<span style="color:var(--text-tertiary); font-size:10px; margin:0 2px;">→</span>` : ''}`;
+                    }).join('');
+                    return `<div style="display:flex; align-items:center; justify-content:center; gap:4px;
+                        padding:var(--sp-2) var(--sp-4); margin-bottom:var(--sp-3);
+                        background:var(--bg-elevated); border-radius:var(--radius-sm);
+                        border:1px solid var(--border); animation:fadeInUp 0.5s var(--ease-out) 0.05s both;">
+                        ${_stepHtml}
+                    </div>`;
+                })()}
+
                 ${praise ? `
                 <!-- What you did well -->
                 <div style="padding:var(--sp-4); margin-bottom:var(--sp-3); border-radius:var(--radius-md);
@@ -1147,8 +1183,9 @@ function renderTalkSummary(container) {
                         };
                     }
 
-                    // Rule 3: Perfect session (no corrections) → push to harder/different scenario
-                    if (!rec && corrections.length === 0) {
+                    // Rule 3: Perfect session → push to harder/different scenario
+                    // Guard: only escalate once the learner is past the early chain (session 4+)
+                    if (!rec && corrections.length === 0 && sessionCount > 3) {
                         const harderIds = ['interview', 'doctor', 'airport', 'free'];
                         const harderId = harderIds.find(s => s !== currentScenario) || 'interview';
                         rec = {
