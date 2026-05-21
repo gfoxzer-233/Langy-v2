@@ -14,107 +14,7 @@ function renderTalk(container) {
     }
 }
 
-// ═══════════════════════════════════════
-// FIRST SESSION: Warm intro before first call
-// ═══════════════════════════════════════
-function renderFirstTalkIntro(container) {
-    const mascotId = ScreenState.get('talkMascot') ?? LangyState.mascot?.selected ?? 0;
-    const scenarioId = ScreenState.get('talkScenario', 'coffee');
-    const scenario = TalkEngine.scenarios.find(s => s.id === scenarioId) || TalkEngine.scenarios[0];
-    const persona = TalkEngine.personas[mascotId] || TalkEngine.personas[0];
-    const imgs = { 0: 'zendaya', 1: 'travis', 2: 'matthew', 3: 'omar', 4: 'elyanna', 5: 'adel_imam' };
-    const lang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
-    const confidence = LangyState.user.confidenceLevel || 'intermediate';
 
-    const tipText = {
-        zero: {
-            en: "Don't worry about mistakes — just try! I'll help you along the way.",
-            ru: 'Не волнуйся из-за ошибок — просто попробуй! Я помогу по ходу.',
-            es: 'No te preocupes por los errores — ¡solo intenta! Te ayudaré.',
-        },
-        basic: {
-            en: "Use simple phrases. I'll guide the conversation and help when you get stuck.",
-            ru: 'Используй простые фразы. Я буду вести разговор и помогу, если застрянешь.',
-            es: 'Usa frases simples. Yo guiaré la conversación y te ayudaré.',
-        },
-        intermediate: {
-            en: "Just talk naturally. I'll gently correct any mistakes as we go.",
-            ru: 'Просто говори естественно. Я мягко исправлю ошибки по ходу.',
-            es: 'Solo habla con naturalidad. Corregiré suavemente tus errores.',
-        },
-        advanced: {
-            en: "Let's have a real conversation. I'll challenge you with idioms and nuance.",
-            ru: 'Давай поговорим по-настоящему. Буду использовать идиомы и нюансы.',
-            es: 'Tengamos una conversación real. Te retaré con modismos y matices.',
-        },
-    };
-
-    const tip = (tipText[confidence] || tipText.intermediate)[lang];
-
-    container.innerHTML = `
-        <div class="screen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:var(--sp-6); text-align:center; animation:fadeInUp 0.5s ease-out;">
-            
-            <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; margin-bottom:var(--sp-4);
-                        box-shadow:0 8px 32px rgba(0,0,0,0.15); border:3px solid var(--primary);">
-                <img src="assets/mascots/${imgs[mascotId]}.png" alt="${persona.name}"
-                     style="width:100%; height:100%; object-fit:contain;"
-                     onerror="this.onerror=null; this.src=this.src.replace('.png','.svg');">
-            </div>
-
-            <h2 style="margin-bottom:var(--sp-2);">${{
-                en: `${persona.name} is ready`,
-                ru: `${persona.name} готов${mascotId === 0 ? 'а' : ''}`,
-                es: `${persona.name} está list${mascotId === 0 ? 'a' : 'o'}`,
-            }[lang]}</h2>
-
-            <p style="color:var(--text-secondary); margin-bottom:var(--sp-2); max-width:300px;">
-                ${isArabicTrack
-                    ? { en: 'Your first Arabic listening session:', ru: '\u0422\u0432\u043e\u044f \u043f\u0435\u0440\u0432\u0430\u044f \u0430\u0440\u0430\u0431\u0441\u043a\u0430\u044f \u0441\u0435\u0441\u0441\u0438\u044f:', es: 'Tu primera sesi\u00f3n de escucha en \u00e1rabe:' }[lang]
-                    : { en: 'Your first conversation:', ru: '\u0422\u0432\u043e\u0439 \u043f\u0435\u0440\u0432\u044b\u0439 \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440:', es: 'Tu primera conversaci\u00f3n:' }[lang]}
-                <strong style="color:var(--primary);">${scenario.title}</strong>
-            </p>
-
-            <div class="card" style="padding:var(--sp-4); margin:var(--sp-4) 0; text-align:left; max-width:340px; width:100%;">
-                <div style="display:flex; align-items:flex-start; gap:var(--sp-3);">
-                    <span style="color:var(--primary); font-size:20px; flex-shrink:0;">${LangyIcons.info}</span>
-                    <p style="font-size:var(--fs-sm); color:var(--text-secondary); line-height:1.5; margin:0;">
-                        ${tip}
-                    </p>
-                </div>
-            </div>
-
-            <div style="display:flex; gap:var(--sp-2); font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:var(--sp-6);">
-                <span>${LangyIcons.mic} ${{ en: 'Tap mic to talk', ru: 'Нажми на микрофон', es: 'Toca el micrófono' }[lang]}</span>
-                <span>·</span>
-                <span>${LangyIcons.headphones} ${{ en: 'Listen & respond', ru: 'Слушай и отвечай', es: 'Escucha y responde' }[lang]}</span>
-            </div>
-
-            <button class="btn btn--primary btn--xl btn--full" id="first-talk-start"
-                    style="max-width:340px; font-size:var(--fs-lg); display:flex; align-items:center; justify-content:center; gap:var(--sp-2);">
-                ${LangyIcons.mic} ${isArabicTrack
-                    ? { en: "Let's listen & practice!", ru: 'Слушаем и практикуем!', es: '¡Escuchemos y practiquemos!' }[lang]
-                    : { en: "Let's talk!", ru: 'Поговорим!', es: '¡Hablemos!' }[lang]}
-            </button>
-
-            <button class="btn btn--ghost" id="first-talk-skip"
-                    style="margin-top:var(--sp-3); font-size:var(--fs-sm);">
-                ${{ en: 'Skip to home', ru: 'Перейти на главную', es: 'Ir al inicio' }[lang]}
-            </button>
-        </div>
-    `;
-
-    container.querySelector('#first-talk-start')?.addEventListener('click', () => {
-        ScreenState.remove('firstTalkSession');
-        ScreenState.set('talkView', 'call');
-        renderTalk(container);
-    });
-
-    container.querySelector('#first-talk-skip')?.addEventListener('click', () => {
-        ScreenState.remove('firstTalkSession');
-        ScreenState.remove('talkView');
-        Router.navigate('home');
-    });
-}
 
 // ═══════════════════════════════════════
 // SCREEN 1: Mascot & Scenario Selection
@@ -1371,8 +1271,9 @@ function renderTalkSummary(container) {
         ScreenState.remove('coachLoopFocus');
 
         if (action === 'lesson') {
-            // Go directly to lesson (current unit)
+            // Go directly to current unit lesson — clear talk state to avoid stale summary on return
             ScreenState.remove('talkView');
+            ScreenState.remove('talkSummary');
             Router.navigate('learning');
         } else if (action === 'speak_focus' && focusTag && activeWeakSpot) {
             // Launch same scenario with weak spot injected as coach focus

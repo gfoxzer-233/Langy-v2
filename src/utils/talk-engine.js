@@ -515,7 +515,7 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
             icon: 'messageCircle',
             color: '#7C6CF6',
             desc: 'Chat about anything!',
-            opener: "Hey! What's on your mind today? Let's just talk about whatever you want.",
+            opener: "Hey! Good to see you. So — what's been on your mind lately? We can talk about literally anything.",
         },
         {
             id: 'coffee',
@@ -523,7 +523,7 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
             icon: 'coffee',
             color: '#F59E0B',
             desc: 'Order at a café',
-            opener: 'Hi there! Welcome to the café. What can I get for you today?',
+            opener: "Hey, welcome in! What can I get started for you today — are you thinking coffee, or something a little different?",
         },
         {
             id: 'airport',
@@ -531,7 +531,7 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
             icon: 'plane',
             color: '#3B82F6',
             desc: 'Check-in & navigate',
-            opener: 'Good morning! Welcome to the check-in counter. Can I see your passport and booking confirmation, please?',
+            opener: 'Good morning! Next in line, please. Can I see your passport and booking reference? Where are you flying to today?',
         },
         {
             id: 'interview',
@@ -539,7 +539,7 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
             icon: 'briefcase',
             color: '#6366F1',
             desc: 'Practice interview skills',
-            opener: 'Hello, please have a seat. Thank you for coming in today. So, tell me a little about yourself.',
+            opener: "Thanks for coming in — please, have a seat. I've had a look at your CV and I'm keen to learn more about you. So, where would you like to start?",
         },
         {
             id: 'roommate',
@@ -547,7 +547,7 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
             icon: 'home',
             color: '#10B981',
             desc: 'Meet your roommate',
-            opener: 'Hey! You must be my new roommate! Nice to meet you. How was your trip here?',
+            opener: "Oh hey, you must be moving in today! I'm so glad you're here — I was starting to get used to the quiet. How was the journey?",
         },
         {
             id: 'restaurant',
@@ -555,7 +555,7 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
             icon: 'utensils',
             color: '#EF4444',
             desc: 'Dine out & order food',
-            opener: "Good evening! Welcome to our restaurant. Would you like to see the menu, or do you already know what you'd like?",
+            opener: "Good evening! Lovely to have you with us tonight. Have you been here before, or is this your first visit? Let me grab you a menu.",
         },
         {
             id: 'doctor',
@@ -563,7 +563,7 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
             icon: 'heart',
             color: '#EC4899',
             desc: 'Describe symptoms',
-            opener: 'Hello, please come in and have a seat. What seems to be the problem today?',
+            opener: "Hi, come on in and make yourself comfortable. I'm Dr. Patel. Now, what's been going on? Tell me in your own words.",
         },
         {
             id: 'shopping',
@@ -571,7 +571,7 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
             icon: 'shoppingBag',
             color: '#8B5CF6',
             desc: 'Buy clothes & ask for help',
-            opener: 'Hi, welcome to the store! Are you looking for anything in particular today?',
+            opener: 'Hi there! Looking for something in particular, or just browsing today? Happy to help if you need a size or a second opinion.',
         },
     ];
 
