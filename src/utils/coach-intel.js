@@ -47,6 +47,7 @@ const CoachIntel = (() => {
                 tag: p.tag,
                 label: _humanizeTag(p.tag),
                 count: p.count,
+                prevCount: p.prevCount || 0,
                 example: p.example || '',
                 status: patternStatus(p),
                 firstSeen: p.firstSeen || p.lastSeen,
@@ -363,6 +364,15 @@ const CoachIntel = (() => {
 
         if (!continuity && patterns.length === 0) return '';
 
+        // ── Welcome banner: one-time unlock moment ──
+        const _welcomeSeen = LangyState.coachData?.welcomeSeen;
+        const _sessionCount = (LangyState.talkHistory || []).length;
+        const _showWelcome = !_welcomeSeen && _sessionCount >= 1;
+        if (_showWelcome && LangyState.coachData) {
+            LangyState.coachData.welcomeSeen = true;
+            if (typeof LangyState.save === 'function') LangyState.save();
+        }
+
         let html = `
         <div style="padding:var(--sp-4); margin-bottom:var(--sp-3); border-radius:var(--radius-lg);
             background:var(--coach-bg, rgba(124,108,246,0.05)); border:1px solid var(--coach-border, rgba(124,108,246,0.12));
@@ -372,7 +382,18 @@ const CoachIntel = (() => {
                 <span style="font-weight:var(--fw-bold); font-size:var(--fs-xs); color:var(--coach, #7C6CF6); text-transform:uppercase; letter-spacing:0.4px;">
                     ${{ en: 'Coach Memory', ru: 'Память Coach', es: 'Memoria del Coach' }[lang]}
                 </span>
-            </div>`;
+            </div>
+            ${_showWelcome ? `
+            <div style="padding:var(--sp-2) var(--sp-3); margin-bottom:var(--sp-3);
+                background:rgba(124,108,246,0.08); border-radius:var(--radius-sm);
+                border-left:3px solid #7C6CF6;">
+                <div style="font-size:var(--fs-xs); font-weight:var(--fw-bold); color:#7C6CF6; margin-bottom:2px;">
+                    ${{ en: 'Your Coach has been watching since session 1.', ru: 'Coach следил с первой сессии.', es: 'Tu Coach lleva observando desde la sesión 1.' }[lang]}
+                </div>
+                <div style="font-size:var(--fs-xs); color:var(--text-tertiary);">
+                    ${{ en: "Here's what it found.", ru: 'Вот что удалось найти.', es: 'Aquí está lo que encontró.' }[lang]}
+                </div>
+            </div>` : ''}`;
 
         if (continuity) {
             html += `
@@ -384,12 +405,25 @@ const CoachIntel = (() => {
         if (patterns.length > 0) {
             const statusDot = { recurring: '#F59E0B', needs_work: '#EF4444', improving: '#10B981', new: 'var(--text-tertiary)' };
             html += `<div style="margin-bottom:${focus ? 'var(--sp-3)' : '0'};">`;
-            for (const p of patterns) {
+            for (let _pi = 0; _pi < patterns.length; _pi++) {
+                const p = patterns[_pi];
+                const _noErr = p.count === p.prevCount;
+                const _worse = p.count >= p.prevCount + 2;
+                const _trend = _noErr
+                    ? `<span style="font-size:10px;color:#10B981;font-weight:600;white-space:nowrap;">&#8600; ${{ en: 'not this session', ru: '\u043d\u0435 \u0441\u0435\u0439\u0447\u0430\u0441', es: 'no esta vez' }[lang]}</span>`
+                    : _worse ? `<span style="font-size:10px;color:#EF4444;font-weight:600;">&#8593;</span>` : '';
+                const _sep = _pi < patterns.length - 1 ? 'border-bottom:1px solid rgba(124,108,246,0.08);' : '';
                 html += `
-                <div style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:var(--fs-sm);">
-                    <span style="width:6px; height:6px; border-radius:50%; background:${statusDot[p.status]}; flex-shrink:0;"></span>
-                    <span style="color:var(--text-secondary);">${p.label}</span>
-                    <span style="margin-left:auto; font-size:var(--fs-xs); color:var(--text-tertiary);">×${p.count}</span>
+                <div style="padding:6px 0;${_sep}">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);">
+                        <span style="width:6px;height:6px;border-radius:50%;background:${statusDot[p.status]};flex-shrink:0;"></span>
+                        <span style="color:var(--text-secondary);flex:1;">${p.label}</span>
+                        ${_trend}
+                        <span style="font-size:var(--fs-xs);color:var(--text-tertiary);">&times;${p.count}</span>
+                    </div>
+                    ${p.example ? `<div style="font-size:var(--fs-xs);color:var(--text-tertiary);padding-left:14px;padding-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;">
+                        ${{ en: 'You said', ru: '\u0422\u044b \u0441\u043a\u0430\u0437\u0430\u043b', es: 'Dijiste' }[lang]}: &#8220;${p.example.length > 60 ? p.example.slice(0, 60) + '\u2026' : p.example}&#8221;
+                    </div>` : ''}
                 </div>`;
             }
             html += `</div>`;
