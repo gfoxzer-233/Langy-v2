@@ -65,7 +65,6 @@ const ExerciseGenerator = {
         const pattern = this._pick(patterns);
 
         // Generate shuffled options
-        const correctIdx = pattern.options.indexOf(pattern.answer);
         const shuffledOptions = this._shuffle(pattern.options);
         const newCorrectIdx = shuffledOptions.indexOf(pattern.answer);
 
@@ -187,12 +186,12 @@ const ExerciseGenerator = {
 
         if (bank?.sentences?.length > 0) {
             const sentence = this._pick(bank.sentences);
-            const shuffled = this._shuffle(sentence.words);
+            let shuffled = this._shuffle(sentence.words);
 
             // Make sure the shuffled order is different from correct
             let attempts = 0;
             while (shuffled.join(' ') === sentence.correct.join(' ') && attempts < 10) {
-                this._shuffle(shuffled);
+                shuffled = this._shuffle(shuffled);
                 attempts++;
             }
 
@@ -658,13 +657,15 @@ const ExerciseGenerator = {
             const patterns = bank[topic];
             const selectedPatterns = this._shuffle(patterns).slice(0, Math.min(3, patterns.length));
             selectedPatterns.forEach(p => {
+                const options = this._shuffle(p.options);
                 exercises.push({
                     type: 'fill-bubble',
                     data: {
                         instruction: `Grammar: ${p.rule || topic}`,
                         sentence: p.template,
-                        options: this._shuffle(p.options),
-                        correct: this._shuffle(p.options).indexOf(p.answer)
+                        options,
+                        correct: options.indexOf(p.answer),
+                        rule: p.rule
                     }
                 });
             });

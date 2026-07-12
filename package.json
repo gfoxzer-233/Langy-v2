@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "validate": "npm run lint && npm run test"
+    "validate": "npm run validate:curriculum && npm run lint && npm run test",
+    "validate:curriculum": "node scripts/validate-curriculum.mjs"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

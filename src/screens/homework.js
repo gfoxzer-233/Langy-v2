@@ -575,7 +575,7 @@ TIPS:
 
 Be encouraging but honest. Keep feedback concise.`;
 
-            const response = await fetch(LangyAI.API_URL, {
+            const response = await LangyAI.fetchWithTimeout(LangyAI.API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -834,7 +834,7 @@ Analyze the photo of their handwritten answer. Return ONLY valid JSON (no markdo
 Score 0-100 based on task completion, grammar, spelling, and handwriting clarity.
 Be encouraging but specific. If you cannot read parts, mention that in issues.`;
 
-            const response = await fetch(LangyAI.API_URL, {
+            const response = await LangyAI.fetchWithTimeout(LangyAI.API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

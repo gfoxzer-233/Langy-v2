@@ -58,6 +58,29 @@ function buildWeekProgress() {
     return Math.round((completed / 7) * 100);
 }
 
+function getActiveLessonMeta() {
+    if (typeof LangyCurriculum === 'undefined') return null;
+    const textbook = LangyCurriculum.getActive();
+    if (!textbook || !Array.isArray(textbook.units) || textbook.units.length === 0) return null;
+
+    const currentUnitId = LangyState.progress?.currentUnitId;
+    const unit = textbook.units.find(u => u.id === currentUnitId) || textbook.units[0];
+    const staticCount = Array.isArray(unit.exercises) ? unit.exercises.length : 0;
+    const configuredCount = Math.max(1, LangyConfig.EXERCISES_PER_LESSON || staticCount || 1);
+    const exerciseCount = textbook.cefr ? Math.max(configuredCount, Math.min(3, staticCount)) : staticCount;
+    const minutes = Math.max(5, Math.round(exerciseCount * 1.8));
+
+    return {
+        textbook,
+        unit,
+        exerciseCount,
+        minutes,
+        goal: unit.objective || (Array.isArray(textbook.canDo) ? (textbook.canDo[unit.id - 1] || textbook.canDo[0]) : ''),
+        title: `Unit ${unit.id}: ${unit.title}`,
+        subtitle: `${unit.desc || unit.grammar?.join(', ') || i18n('learn.next_lesson')} · ${exerciseCount} ${i18n('learn.exercises')} · ~${minutes} ${i18n('learn.minutes')}`,
+    };
+}
+
 // Compact streak dots for inline row
 function buildWeekDots() {
     const today = new Date();
@@ -205,21 +228,33 @@ function renderHome(container) {
     if (!user.firstSpeakingScenarioId) {
         user.firstSpeakingScenarioId = 'coffee';
     }
+    // Backfill firstLessonCompleted for existing users
+    if (typeof user.firstLessonCompleted !== 'boolean') {
+        user.firstLessonCompleted = (LangyState.progress.lessonHistory || []).length > 0;
+    }
 
     const talkSessions = (LangyState.talkHistory || []).length;
+    const lessonsDone = (LangyState.progress.lessonHistory || []).length;
     const isFirstJourney = !user.hasCompletedOnboarding && !user.firstSessionCompleted;
     const isBeforeFirstSession = !user.firstSessionCompleted;
     const isEarlyJourney = isFirstJourney || isBeforeFirstSession || talkSessions < 3;
+    // True beginner: zero/basic confidence AND hasn't done a lesson yet
+    // Also treat unknown confidence (null) + no lessons as true beginner
+    const isTrueBeginner = isEarlyJourney && lessonsDone === 0 && (user.confidenceLevel === 'zero' || user.confidenceLevel === 'basic' || !user.confidenceLevel);
+    // Post-lesson beginner: did a lesson but hasn't spoken yet
+    const isPostLessonBeginner = isEarlyJourney && lessonsDone > 0 && !user.firstSessionCompleted;
     const firstScenario = user.firstSpeakingScenarioId || 'coffee';
     const nextScenarioByGoal = {
         speak: 'coffee',
         work: 'interview',
         travel: 'airport',
+        fun: 'coffee',
         exam: 'free',
     };
     const recommendedScenario = isBeforeFirstSession
         ? firstScenario
         : nextScenarioByGoal[user.goal] || 'coffee';
+    const activeLessonMeta = getActiveLessonMeta();
 
     container.innerHTML = `
         <div class="screen screen--no-pad home">
@@ -261,12 +296,14 @@ function renderHome(container) {
                 </div>
                 <!-- Mascot identity -->
                 <div class="home__mascot-name">
-                    ${['Zendaya','Travis','Matthew','Omar'][LangyState.mascot.selected || 0]}
+                    ${['Zendaya','Travis','Matthew','Omar','Elyanna','Adel Imam'][LangyState.mascot.selected || 0]}
                     <span class="home__mascot-trait">${[
                         { en: 'Cheerful', ru: 'Весёлая', es: 'Alegre' },
                         { en: 'Creative', ru: 'Креативный', es: 'Creativo' },
                         { en: 'Structured', ru: 'Системный', es: 'Estructurado' },
                         { en: 'Supportive', ru: 'Чуткий', es: 'Comprensivo' },
+                        { en: 'Magnetic', ru: 'Обаятельная', es: 'Magnética' },
+                        { en: 'Theatrical', ru: 'Театральный', es: 'Teatral' },
                     ][LangyState.mascot.selected || 0][lang]}</span>
                 </div>
 
@@ -375,7 +412,6 @@ function renderHome(container) {
                 ">
                     <span style="font-size:20px;">${tc.flag}</span>
                     <span style="font-weight:var(--fw-semibold, 600); font-size:var(--fs-sm);">${langName}</span>
-                    <span style="font-size:10px; color:var(--text-tertiary); margin-left:auto;">CEFR ${tc.cefrLevels ? tc.cefrLevels[0] + '\u2013' + tc.cefrLevels[tc.cefrLevels.length-1] : ''}</span>
                 </div>`;
             })()}
 
@@ -386,11 +422,9 @@ function renderHome(container) {
                 if (targetCode !== 'en' && targetCode !== 'ar') return '';
                 const tb = LangyCurriculum.getActive();
                 if (!tb || !tb.canDo || !tb.canDo.length) return '';
-                const skills = LangyState.progress?.skills || {};
-                const skillVals = ['speaking','listening','writing','grammar','vocabulary','reading'].map(k => skills[k] || 0);
-                const avgPct = skillVals.length ? Math.round(skillVals.reduce((a,b) => a+b, 0) / skillVals.length) : 0;
-                const completed = Math.max(0, Math.round(tb.canDo.length * (avgPct / 100)));
-                const nextGoal = tb.canDo[Math.min(completed, tb.canDo.length - 1)];
+                const currentUnitId = activeLessonMeta?.unit?.id || 1;
+                const completed = Math.max(0, currentUnitId - 1);
+                const nextGoal = activeLessonMeta?.goal || tb.canDo[Math.min(completed, tb.canDo.length - 1)];
                 if (!nextGoal) return '';
                 const l = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
                 const tc = LangyTarget.current;
@@ -408,53 +442,104 @@ function renderHome(container) {
 
             <!-- Next Action Zone -->
             <div class="home__next-action">
-                ${
-                    isEarlyJourney
-                        ? `
+                ${(() => {
+                    if (isTrueBeginner) {
+                        // True beginner: lesson milestone card
+                        return `
+                <div class="card" style="margin:0 var(--sp-5) var(--sp-3); padding:var(--sp-3) var(--sp-4); border:1px solid var(--border); background:var(--bg-card);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);">
+                        <div>
+                            <div style="font-size:var(--fs-xs); color:var(--text-tertiary);">
+                                ${{ en: 'Your learning path', ru: 'Твой путь обучения', es: 'Tu camino de aprendizaje' }[lang]}
+                            </div>
+                            <div style="font-weight:var(--fw-bold);">
+                                ${{ en: 'Start with a lesson', ru: 'Начни с урока', es: 'Empieza con una lección' }[lang]}
+                            </div>
+                        </div>
+                        <span style="font-size:20px;">📖</span>
+                    </div>
+                </div>`;
+                    } else if (isPostLessonBeginner) {
+                        // Post-lesson: speaking milestone
+                        return `
+                <div class="card" style="margin:0 var(--sp-5) var(--sp-3); padding:var(--sp-3) var(--sp-4); border:1px solid var(--border); background:var(--bg-card);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);">
+                        <div>
+                            <div style="font-size:var(--fs-xs); color:var(--text-tertiary);">
+                                ${{ en: 'Ready to practice!', ru: 'Готов к практике!', es: '¡Listo para practicar!' }[lang]}
+                            </div>
+                            <div style="font-weight:var(--fw-bold);">
+                                ${{ en: 'Lesson done — time to speak', ru: 'Урок пройден — время говорить', es: 'Lección hecha — hora de hablar' }[lang]}
+                            </div>
+                        </div>
+                        <span style="font-size:20px;">🎙</span>
+                    </div>
+                </div>`;
+                    } else if (isEarlyJourney) {
+                        // Intermediate/advanced early journey: speaking first (existing)
+                        return `
                 <div class="card" style="margin:0 var(--sp-5) var(--sp-3); padding:var(--sp-3) var(--sp-4); border:1px solid var(--border); background:var(--bg-card);">
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);">
                         <div>
                             <div style="font-size:var(--fs-xs); color:var(--text-tertiary);">
                                 ${isBeforeFirstSession
-                                    ? ({ en: 'First speaking session', ru: 'Первая разговорная сессия', es: 'Primera sesión de speaking' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'])
-                                    : ({ en: 'First-week momentum', ru: 'Фокус первой недели', es: 'Impulso de la primera semana' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'])}
+                                    ? ({ en: 'First speaking session', ru: 'Первая разговорная сессия', es: 'Primera sesión de habla' }[lang])
+                                    : ({ en: 'First-week momentum', ru: 'Фокус первой недели', es: 'Impulso de la primera semana' }[lang])}
                             </div>
                             <div style="font-weight:var(--fw-bold);">
                                 ${isBeforeFirstSession
-                                    ? ({ en: 'Step 1/3', ru: 'Шаг 1/3', es: 'Paso 1/3' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'])
-                                    : ({ en: `Session ${Math.max(1, talkSessions + 1)} of 3`, ru: `Сессия ${Math.max(1, talkSessions + 1)} из 3`, es: `Sesión ${Math.max(1, talkSessions + 1)} de 3` }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'])}
+                                    ? ({ en: 'Step 1/3', ru: 'Шаг 1/3', es: 'Paso 1/3' }[lang])
+                                    : ({ en: `Session ${Math.max(1, talkSessions + 1)} of 3`, ru: `Сессия ${Math.max(1, talkSessions + 1)} из 3`, es: `Sesión ${Math.max(1, talkSessions + 1)} de 3` }[lang])}
                             </div>
                         </div>
-                        <span style="font-size:var(--fs-xs); color:var(--text-tertiary);">${LangyIcons.target}</span>
+                        <span style="font-size:20px;">🎯</span>
                     </div>
-                </div>
-                `
-                        : `
-                ${typeof DailySpeaking !== 'undefined' && user.hasCompletedPlacement ? DailySpeaking.renderCard() : ''}
-                `
-                }
+                </div>`;
+                    } else {
+                        // Established user: daily speaking + continuity
+                        return `
+                ${typeof DailySpeaking !== 'undefined' && user.hasCompletedPlacement ? DailySpeaking.renderCard() : ''}`;
+                    }
+                })()}
 
                 ${!isEarlyJourney && user.hasCompletedPlacement ? buildContinuityCard() : ''}
 
                 <!-- Main CTA -->
                 <div style="padding: 0 var(--sp-5) var(--sp-2);">
-                    <button id="nav-learning" class="btn btn--primary btn--xl btn--full" style="font-size: var(--fs-lg); display: flex; align-items: center; justify-content: center; gap: var(--sp-2); flex-direction: ${user.hasCompletedPlacement ? 'column' : 'row'}; padding: ${user.hasCompletedPlacement ? '14px 24px' : ''};">
-                        ${isEarlyJourney
-                            ? `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.mic}</span> ${
-                                  isBeforeFirstSession
-                                      ? ({ en: 'Start guided speaking', ru: 'Начать guided speaking', es: 'Iniciar speaking guiado' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'])
-                                      : ({ en: 'Do your next speaking session', ru: 'Сделать следующую разговорную сессию', es: 'Haz tu siguiente sesión de speaking' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'])
-                              }</div>
-                               <div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${
-                                   isBeforeFirstSession
-                                       ? ({ en: 'Short guided path', ru: 'Короткий guided путь', es: 'Ruta guiada corta' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'])
-                                       : ({ en: 'Keep momentum with one focused talk', ru: 'Сохрани темп: одна фокусная сессия', es: 'Mantén el ritmo con una sesión enfocada' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'])
-                               }</div>`
-                            : !user.hasCompletedPlacement
-                              ? i18n('learn.title') + ' ' + LangyIcons.fileText
-                              : `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.rocket}</span> ${i18n('home.continue')}</div><div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${LangyState.progress.currentUnit || i18n('learn.next_lesson')}</div>`}
+                    <button id="nav-learning" class="btn btn--primary btn--xl btn--full" style="font-size: var(--fs-lg); display: flex; align-items: center; justify-content: center; gap: var(--sp-2); flex-direction: column; padding: 14px 24px;">
+                        ${(() => {
+                            if (isTrueBeginner) {
+                                // True beginner: lesson-first CTA
+                                return `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.bookOpen}</span> ${{ en: 'Start your first lesson', ru: 'Начать первый урок', es: 'Empezar tu primera lección' }[lang]}</div>
+                                <div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${activeLessonMeta ? activeLessonMeta.subtitle : ({ en: 'Learn key phrases before speaking', ru: 'Выучи ключевые фразы перед разговором', es: 'Aprende frases clave antes de hablar' }[lang])}</div>`;
+                            } else if (isPostLessonBeginner) {
+                                // Post-lesson: speaking CTA becomes primary
+                                return `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.mic}</span> ${{ en: 'Practice what you learned', ru: 'Практикуй то, что выучил', es: 'Practica lo que aprendiste' }[lang]}</div>
+                                <div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${{ en: 'Guided speaking session', ru: 'Разговорная сессия с поддержкой', es: 'Sesión de habla guiada' }[lang]}</div>`;
+                            } else if (isEarlyJourney) {
+                                // Intermediate/advanced: speaking-first
+                                return `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.mic}</span> ${
+                                    isBeforeFirstSession
+                                        ? ({ en: 'Start guided speaking', ru: 'Начать разговорную практику', es: 'Iniciar práctica de habla' }[lang])
+                                        : ({ en: 'Next speaking session', ru: 'Следующая разговорная сессия', es: 'Siguiente sesión de habla' }[lang])
+                                }</div>
+                                <div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${{ en: 'Short guided conversation', ru: 'Короткий разговор с поддержкой', es: 'Conversación guiada corta' }[lang]}</div>`;
+                            } else if (!user.hasCompletedPlacement) {
+                                return `${i18n('learn.title')} ${LangyIcons.fileText}`;
+                            } else {
+                                return `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.rocket}</span> ${i18n('home.continue')}</div><div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${activeLessonMeta ? activeLessonMeta.subtitle : i18n('learn.next_lesson')}</div>`;
+                            }
+                        })()}
                     </button>
                 </div>
+
+                ${isPostLessonBeginner ? `
+                <!-- Secondary CTA: Continue lessons -->
+                <div style="padding: 0 var(--sp-5) var(--sp-2);">
+                    <button id="nav-continue-lesson" class="btn btn--secondary btn--lg btn--full" style="font-size: var(--fs-md); display: flex; align-items: center; justify-content: center; gap: var(--sp-2);">
+                        ${LangyIcons.bookOpen} ${{ en: 'Continue lessons', ru: 'Продолжить уроки', es: 'Continuar lecciones' }[lang]}
+                    </button>
+                </div>` : ''}
             </div>
 
             <!-- Ecosystem Grid -->
@@ -503,11 +588,11 @@ function renderHome(container) {
                     <div class="home__actions home__actions--two">
                         <div class="action-card" id="nav-inventory">
                             <div class="action-card__icon action-card__icon--gold">${LangyIcons.briefcase}</div>
-                            <div class="action-card__title">Inventory</div>
+                            <div class="action-card__title">${{ en: 'Inventory', ru: 'Инвентарь', es: 'Inventario' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
                         </div>
                         <div class="action-card" id="nav-shop">
                             <div class="action-card__icon action-card__icon--blue">${LangyIcons.shoppingBag}</div>
-                            <div class="action-card__title">Shop</div>
+                            <div class="action-card__title">${{ en: 'Shop', ru: 'Магазин', es: 'Tienda' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
                         </div>
                     </div>
                 </div>
@@ -532,17 +617,24 @@ function renderHome(container) {
     // Main CTA button
     container.querySelector('#nav-learning')?.addEventListener('click', e => {
         Anim.ripple(e);
-        if (isEarlyJourney) {
+        if (isTrueBeginner) {
+            // True beginner → go to lesson
+            const actionCards = container.querySelectorAll('.action-card');
+            Anim.flyOut([...actionCards]);
+            setTimeout(() => Router.navigate('learning'), 500);
+        } else if (isPostLessonBeginner || (isEarlyJourney && isBeforeFirstSession)) {
+            // Post-lesson beginner or intermediate first-timer → go to talk
             ScreenState.set('talkScenario', recommendedScenario);
             ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
-            if (isBeforeFirstSession) {
-                ScreenState.set('firstTalkSession', true);
-                ScreenState.remove('firstTalkStep');
-                ScreenState.remove('firstTalkResponses');
-            } else {
-                ScreenState.remove('firstTalkSession');
-                ScreenState.set('talkView', 'call');
-            }
+            ScreenState.set('firstTalkSession', true);
+            ScreenState.set('guidedSpeaking', true);
+            Router.navigate('talk');
+        } else if (isEarlyJourney) {
+            // Early journey, not first session → talk
+            ScreenState.set('talkScenario', recommendedScenario);
+            ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
+            ScreenState.set('guidedSpeaking', true);
+            ScreenState.set('talkView', 'call');
             Router.navigate('talk');
         } else if (!user.hasCompletedPlacement) {
             Router.navigate('placement-test');
@@ -553,12 +645,20 @@ function renderHome(container) {
         }
     });
 
+    // Secondary CTA: continue lessons (shown for post-lesson beginners)
+    container.querySelector('#nav-continue-lesson')?.addEventListener('click', e => {
+        Anim.ripple(e);
+        const actionCards = container.querySelectorAll('.action-card');
+        Anim.flyOut([...actionCards]);
+        setTimeout(() => Router.navigate('learning'), 500);
+    });
+
     Object.entries(navMap).forEach(([id, route]) => {
         const el = container.querySelector(`#${id}`);
         if (el) {
             el.addEventListener('click', e => {
                 if (!user.hasCompletedPlacement && ['homework', 'tests', 'results', 'daily'].includes(route)) {
-                    Anim.showToast('Please complete your Placement Test first!');
+                    Anim.showToast({ en: 'Please complete your Placement Test first!', ru: 'Сначала пройди тест на уровень!', es: '¡Completa primero tu prueba de nivel!' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']);
                     setTimeout(() => Router.navigate('placement-test'), 1000);
                     return;
                 }

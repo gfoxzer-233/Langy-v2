@@ -7,6 +7,33 @@ const LangyAI = {
     // API key is now stored securely on Cloudflare Worker (never in client code)
     API_URL: 'https://langy-ai-proxy.soccermax2017.workers.dev',
     MODEL: 'google/gemini-2.0-flash-001',
+    REQUEST_TIMEOUT_MS: 15000,
+
+    getUnavailableMessage() {
+        return 'AI temporarily unavailable';
+    },
+
+    _normalizeError(err) {
+        if (err?.name === 'AbortError') return new Error(this.getUnavailableMessage());
+        if (err?.message === this.getUnavailableMessage()) return err;
+        return new Error(this.getUnavailableMessage());
+    },
+
+    async fetchWithTimeout(url, options = {}, timeoutMs = this.REQUEST_TIMEOUT_MS) {
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+        const requestOptions = controller ? { ...options, signal: controller.signal } : options;
+        try {
+            return await fetch(url, requestOptions);
+        } catch (err) {
+            if (controller && /AbortSignal|signal/i.test(err?.message || '')) {
+                return fetch(url, options);
+            }
+            throw err;
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    },
 
     // ─── SYSTEM PROMPT: Серьёзный учитель английского ───
     getSystemPrompt() {
@@ -233,7 +260,7 @@ ${weakAreas.length ? `\nSTUDENT WEAK AREAS (focus extra attention here): ${weakA
         messages.push({ role: 'user', content: message });
 
         try {
-            const response = await fetch(this.API_URL, {
+            const response = await this.fetchWithTimeout(this.API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -250,7 +277,7 @@ ${weakAreas.length ? `\nSTUDENT WEAK AREAS (focus extra attention here): ${weakA
             if (!response.ok) {
                 const err = await response.text();
                 console.error('OpenRouter API Error:', err);
-                throw new Error('AI temporarily unavailable');
+                throw new Error(this.getUnavailableMessage());
             }
 
             if (onChunk) {
@@ -288,7 +315,7 @@ ${weakAreas.length ? `\nSTUDENT WEAK AREAS (focus extra attention here): ${weakA
             }
         } catch (err) {
             console.error('AI Chat Error:', err);
-            throw err;
+            throw this._normalizeError(err);
         }
     },
 
@@ -379,11 +406,17 @@ Feedback: [Your detailed feedback. Point out specific errors with corrections. R
         const scoreMatch = response.match(/Score:\s*(\d+)/i);
         const gradeMatch = response.match(/Grade:\s*([A-F])/i);
         const feedbackPart = response.split(/Feedback:/i)[1] || response;
+        const score = scoreMatch ? parseInt(scoreMatch[1]) : NaN;
+        const grade = gradeMatch ? gradeMatch[1] : null;
+
+        if (!Number.isInteger(score) || score < 0 || score > 100 || !grade) {
+            throw new Error(this.getUnavailableMessage());
+        }
 
         return {
-            score: scoreMatch ? parseInt(scoreMatch[1]) : 50,
+            score,
             feedback: feedbackPart.trim(),
-            grade: gradeMatch ? gradeMatch[1] : 'C',
+            grade,
         };
     },
 

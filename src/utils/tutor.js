@@ -196,7 +196,8 @@ const DeepTutor = {
                 const unitId = typeof LangyState !== 'undefined' ? LangyState.progress?.currentUnitId : null;
                 const unit = unitId && tb.units ? tb.units.find(u => u.id === unitId) : null;
                 const unitName = unit ? unit.title : '';
-                const canDo = tb.canDo && tb.canDo.length ? tb.canDo[0] : '';
+                const canDoIndex = unit?.id ? unit.id - 1 : 0;
+                const canDo = unit?.objective || (tb.canDo && tb.canDo.length ? (tb.canDo[canDoIndex] || tb.canDo[0]) : '');
 
                 if (lang === 'ru') {
                     let g = `Привет! Я твой AI-репетитор по английскому.`;

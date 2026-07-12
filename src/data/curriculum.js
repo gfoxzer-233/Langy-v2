@@ -1,173 +1,4 @@
-units: [
-    // ── Unit 1: Letters Group 1 ──
-    {
-        id: 1, title: 'الحروف ١ — Letters: ا ب ت ث ج ح', desc: 'Your first 6 Arabic letters — shapes, sounds, and recognition.',
-        unitType: 'grammar', grammar: ['Arabic script basics', 'letter recognition', 'isolated forms'],
-        vocab: ['ا', 'ب', 'ت', 'ث', 'ج', 'ح'],
-        teachSlides: [
-            { type: 'explain', mascotText: "مرحباً! Welcome to Arabic! We'll learn the alphabet in groups of 6–7 letters. Arabic has 28 letters — each has up to 4 forms. Today: your first 6.", mascotEmotion: 'happy' },
-            { type: 'compare', mascotText: "Arabic is written right-to-left. Let's meet your first letters:", mascotEmotion: 'thinking',
-              left: { label: 'Letter → Name', items: ['ا = alif (a)', 'ب = bā (b)', 'ت = tā (t)'] },
-              right: { label: 'Letter → Name', items: ['ث = thā (th)', 'ج = jīm (j)', 'ح = ḥā (ḥ)'] }
-            },
-            { type: 'tip', mascotText: "Notice: ب ت ث look similar — same shape, different dots! 1 dot below = ب, 2 dots above = ت, 3 dots above = ث. Dots are the key!", mascotEmotion: 'happy', tipText: "ب = 1 dot below · ت = 2 dots above · ث = 3 dots above" }
-        ],
-        exercises: [
-            { type: 'match-pairs', data: { instruction: 'Match letter to sound', pairs: [{ left: 'ا', right: 'alif' }, { left: 'ب', right: 'bā' }, { left: 'ت', right: 'tā' }, { left: 'ث', right: 'thā' }] } },
-            { type: 'fill-bubble', data: { instruction: 'Which letter is "jīm"?', sentence: 'jīm = ___', options: ['ح', 'ج', 'ث'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: 'How many dots does ث have?', sentence: 'ث has ___ dots', options: ['1', '2', '3'], correct: 2 } },
-            { type: 'fill-bubble', data: { instruction: 'Arabic is written:', sentence: 'Arabic is written ___', options: ['left-to-right', 'right-to-left', 'top-to-bottom'], correct: 1 } },
-            { type: 'match-pairs', data: { instruction: 'Match by dots', pairs: [{ left: '1 dot below', right: 'ب' }, { left: '2 dots above', right: 'ت' }, { left: '3 dots above', right: 'ث' }, { left: 'no dots', right: 'ا' }] } },
-            { type: 'speak-aloud', data: { instruction: 'Say each letter name:', phrase: 'Alif, bā, tā, thā, jīm, ḥā' } }
-        ]
-    },
-    // ── Unit 2: Letters Group 2 ──
-    {
-        id: 2, title: 'الحروف ٢ — Letters: خ د ذ ر ز س ش', desc: 'Letters 7–13: new shapes and the sun/moon letter concept.',
-        unitType: 'grammar', grammar: ['letter forms group 2', 'dot patterns', 'letter shapes'],
-        vocab: ['خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش'],
-        teachSlides: [
-            { type: 'explain', mascotText: "Great progress! Today: 7 more letters. Notice how د and ذ are the same shape — the dot above makes ذ. Same pattern as ر and ز!", mascotEmotion: 'happy' },
-            { type: 'compare', mascotText: "Dot twins — same shape, different sounds:", mascotEmotion: 'thinking',
-              left: { label: 'No dot', items: ['د = dāl (d)', 'ر = rā (r)', 'س = sīn (s)'] },
-              right: { label: 'With dot(s)', items: ['ذ = dhāl (dh)', 'ز = zāy (z)', 'ش = shīn (sh)'] }
-            },
-            { type: 'tip', mascotText: "خ is like ح from Group 1, but with a dot above. Pattern: ح = no dot, خ = dot above.", mascotEmotion: 'happy', tipText: "ح (ḥā) → خ (khā): same shape + dot" }
-        ],
-        exercises: [
-            { type: 'match-pairs', data: { instruction: 'Match letter to sound', pairs: [{ left: 'خ', right: 'khā' }, { left: 'د', right: 'dāl' }, { left: 'ر', right: 'rā' }, { left: 'س', right: 'sīn' }] } },
-            { type: 'fill-bubble', data: { instruction: 'Which letter is "shīn"?', sentence: 'shīn = ___', options: ['س', 'ش', 'ث'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: 'ذ is like د but with:', sentence: 'ذ = د + ___', options: ['a dot above', 'a dot below', 'two dots'], correct: 0 } },
-            { type: 'match-pairs', data: { instruction: 'Dot twins — match the pair', pairs: [{ left: 'د (no dot)', right: 'ذ (dot)' }, { left: 'ر (no dot)', right: 'ز (dot)' }, { left: 'س (no dots)', right: 'ش (dots)' }, { left: 'ح (no dot)', right: 'خ (dot)' }] } },
-            { type: 'fill-bubble', data: { instruction: 'How many letters learned so far?', sentence: 'Group 1 + Group 2 = ___', options: ['10', '13', '15'], correct: 1 } },
-            { type: 'speak-aloud', data: { instruction: 'Say each letter name:', phrase: 'Khā, dāl, dhāl, rā, zāy, sīn, shīn' } }
-        ]
-    },
-    // ── Unit 3: Letters Group 3 ──
-    {
-        id: 3, title: 'الحروف ٣ — Letters: ص ض ط ظ ع غ', desc: 'The "deep" Arabic sounds — emphatic and pharyngeal letters.',
-        unitType: 'grammar', grammar: ['emphatic consonants', 'pharyngeal sounds', 'ع and غ'],
-        vocab: ['ص', 'ض', 'ط', 'ظ', 'ع', 'غ'],
-        teachSlides: [
-            { type: 'explain', mascotText: "These 6 letters are uniquely Arabic — sounds that don't exist in English! ص ض ط ظ are 'emphatic' (heavier, deeper). ع غ come from the throat.", mascotEmotion: 'happy' },
-            { type: 'compare', mascotText: "Emphatic pairs — same shape, dot makes the difference:", mascotEmotion: 'thinking',
-              left: { label: 'No dot', items: ['ص = ṣād (emphatic s)', 'ط = ṭā (emphatic t)'] },
-              right: { label: 'With dot', items: ['ض = ḍād (emphatic d)', 'ظ = ẓā (emphatic z)'] }
-            },
-            { type: 'tip', mascotText: "ع (ʿayn) is the most iconic Arabic sound — a deep throat squeeze. غ (ghayn) is like gargling. These take practice, but you'll get them!", mascotEmotion: 'happy', tipText: "ع = deep throat · غ = gargling · Don't rush — listen and repeat" }
-        ],
-        exercises: [
-            { type: 'match-pairs', data: { instruction: 'Match letter to sound', pairs: [{ left: 'ص', right: 'ṣād' }, { left: 'ض', right: 'ḍād' }, { left: 'ط', right: 'ṭā' }, { left: 'ع', right: 'ʿayn' }] } },
-            { type: 'fill-bubble', data: { instruction: 'Which letter sounds like a deep "s"?', sentence: 'Emphatic s = ___', options: ['س', 'ص', 'ش'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: 'ع is produced from the:', sentence: 'ع comes from the ___', options: ['lips', 'throat', 'nose'], correct: 1 } },
-            { type: 'match-pairs', data: { instruction: 'Emphatic pairs', pairs: [{ left: 'ص (no dot)', right: 'ض (dot)' }, { left: 'ط (no dot)', right: 'ظ (dot)' }, { left: 'ع (no dot)', right: 'غ (dot)' }] } },
-            { type: 'fill-bubble', data: { instruction: 'Letters learned: Groups 1+2+3 =', sentence: 'Total letters so far: ___', options: ['16', '19', '21'], correct: 1 } },
-            { type: 'speak-aloud', data: { instruction: 'Try these sounds:', phrase: 'Ṣād, ḍād, ṭā, ẓā, ʿayn, ghayn' } }
-        ]
-    },
-    // ── Unit 4: Letters Group 4 ──
-    {
-        id: 4, title: 'الحروف ٤ — Letters: ف ق ك ل م ن ه و ي', desc: 'Complete the alphabet! The final 9 letters and how letters connect.',
-        unitType: 'grammar', grammar: ['remaining letters', 'letter connection basics', 'full alphabet'],
-        vocab: ['ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'],
-        teachSlides: [
-            { type: 'explain', mascotText: "You're almost there! These last 9 letters complete the Arabic alphabet — 28 letters total! After this, you'll know every letter.", mascotEmotion: 'happy' },
-            { type: 'compare', mascotText: "Key letters in this group:", mascotEmotion: 'thinking',
-              left: { label: 'Familiar sounds', items: ['ف = fā (f)', 'ك = kāf (k)', 'ل = lām (l)', 'م = mīm (m)', 'ن = nūn (n)'] },
-              right: { label: 'New shapes', items: ['ق = qāf (q — deep k)', 'ه = hā (h)', 'و = wāw (w/ū)', 'ي = yā (y/ī)'] }
-            },
-            { type: 'tip', mascotText: "و (wāw) and ي (yā) are special — they can be consonants (w, y) OR long vowels (ū, ī). You'll learn more about this in the vowels unit!", mascotEmotion: 'happy', tipText: "و = w or ū · ي = y or ī · Double duty!" }
-        ],
-        exercises: [
-            { type: 'match-pairs', data: { instruction: 'Match letter to sound', pairs: [{ left: 'ف', right: 'fā' }, { left: 'ق', right: 'qāf' }, { left: 'ل', right: 'lām' }, { left: 'ن', right: 'nūn' }] } },
-            { type: 'fill-bubble', data: { instruction: 'How many letters in Arabic?', sentence: 'Arabic has ___ letters.', options: ['26', '28', '30'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: 'Which letter makes a deep "k" sound?', sentence: 'Deep k = ___', options: ['ك', 'ق', 'غ'], correct: 1 } },
-            { type: 'match-pairs', data: { instruction: 'Match the remaining letters', pairs: [{ left: 'ك', right: 'kāf' }, { left: 'م', right: 'mīm' }, { left: 'ه', right: 'hā' }, { left: 'ي', right: 'yā' }] } },
-            { type: 'fill-bubble', data: { instruction: 'و and ي can also be:', sentence: 'و and ي can be consonants or ___', options: ['emphatic sounds', 'long vowels', 'dots'], correct: 1 } },
-            { type: 'speak-aloud', data: { instruction: 'Complete the alphabet:', phrase: 'Fā, qāf, kāf, lām, mīm, nūn, hā, wāw, yā' } }
-        ]
-    },
-    // ── Unit 5: Vowels & First Reading ──
-    {
-        id: 5, title: 'الحركات — Vowels & Reading', desc: 'Short vowels, sukūn, shadda — and reading your first Arabic words!',
-        unitType: 'grammar', grammar: ['short vowels (fatḥa, ḍamma, kasra)', 'sukūn', 'shadda', 'first word reading'],
-        vocab: ['فَتحة', 'ضَمّة', 'كَسرة', 'سُكون', 'شَدّة', 'كَتَبَ', 'بَيت', 'بِنت'],
-        teachSlides: [
-            { type: 'explain', mascotText: "Now you know the letters — let's add vowels! Arabic vowels are marks above or below letters. They tell you how to pronounce each letter.", mascotEmotion: 'happy' },
-            { type: 'compare', mascotText: "The 3 short vowels:", mascotEmotion: 'thinking',
-              left: { label: 'Vowel marks', items: ['فَ = fa (fatḥa: line above)', 'فُ = fu (ḍamma: curl above)', 'فِ = fi (kasra: line below)'] },
-              right: { label: 'Special marks', items: ['فْ = f— (sukūn: no vowel)', 'فّ = ff (shadda: doubled)'] }
-            },
-            { type: 'tip', mascotText: "Let's read your first word! كَتَبَ = ka-ta-ba (he wrote). Break it down: كَ=ka + تَ=ta + بَ=ba. You just read Arabic!", mascotEmotion: 'happy', tipText: "كَتَبَ = ka·ta·ba = he wrote 🎉" }
-        ],
-        exercises: [
-            { type: 'fill-bubble', data: { instruction: 'What does fatḥa sound like?', sentence: 'بَ = ___', options: ['ba', 'bu', 'bi'], correct: 0 } },
-            { type: 'fill-bubble', data: { instruction: 'What does ḍamma sound like?', sentence: 'بُ = ___', options: ['ba', 'bu', 'bi'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: 'What does kasra sound like?', sentence: 'بِ = ___', options: ['ba', 'bu', 'bi'], correct: 2 } },
-            { type: 'match-pairs', data: { instruction: 'Match vowel to name', pairs: [{ left: 'َ  (line above)', right: 'fatḥa' }, { left: 'ُ  (curl above)', right: 'ḍamma' }, { left: 'ِ  (line below)', right: 'kasra' }, { left: 'ْ  (circle above)', right: 'sukūn' }] } },
-            { type: 'fill-bubble', data: { instruction: 'Read this word: كَتَبَ', sentence: 'كَتَبَ = ___', options: ['kataba', 'kutiba', 'kitāb'], correct: 0 } },
-            { type: 'fill-bubble', data: { instruction: 'Shadda means the letter is:', sentence: 'شَدّة means ___', options: ['silent', 'doubled', 'long'], correct: 1 } },
-            { type: 'speak-aloud', data: { instruction: 'Read these words aloud:', phrase: 'Ka-ta-ba. Bay-t. Bin-t.' } }
-        ]
-    },
-    // ── Unit 6: Script Checkpoint ──
-    {
-        id: 6, title: '🔄 Script Checkpoint', desc: 'Review all 28 letters, vowels, and read simple words.',
-        unitType: 'review', grammar: ['full alphabet review', 'vowel marks', 'basic reading'],
-        exercises: [
-            { type: 'match-pairs', data: { instruction: 'Match Group 1 letters', pairs: [{ left: 'ا', right: 'alif' }, { left: 'ب', right: 'bā' }, { left: 'ج', right: 'jīm' }, { left: 'ح', right: 'ḥā' }] } },
-            { type: 'match-pairs', data: { instruction: 'Match Group 2 letters', pairs: [{ left: 'خ', right: 'khā' }, { left: 'د', right: 'dāl' }, { left: 'س', right: 'sīn' }, { left: 'ش', right: 'shīn' }] } },
-            { type: 'fill-bubble', data: { instruction: 'Emphatic s:', sentence: 'Emphatic s = ___', options: ['س', 'ص', 'ش'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: 'Throat sound:', sentence: 'ع is from the ___', options: ['lips', 'throat', 'teeth'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: 'How many Arabic letters?', sentence: 'Arabic has ___ letters.', options: ['26', '28', '30'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: 'Vowel mark below:', sentence: 'بِ uses ___', options: ['fatḥa', 'ḍamma', 'kasra'], correct: 2 } },
-            { type: 'match-pairs', data: { instruction: 'Match vowels', pairs: [{ left: 'َ  above', right: 'fatḥa (a)' }, { left: 'ُ  above', right: 'ḍamma (u)' }, { left: 'ِ  below', right: 'kasra (i)' }, { left: 'ْ  above', right: 'sukūn (—)' }] } },
-            { type: 'fill-bubble', data: { instruction: 'Read: كَتَبَ', sentence: 'كَتَبَ = ___', options: ['kataba', 'kabata', 'takaba'], correct: 0 } },
-            { type: 'fill-bubble', data: { instruction: 'Dot twins: ر +dot =', sentence: 'ر + dot = ___', options: ['ذ', 'ز', 'د'], correct: 1 } },
-            { type: 'speak-aloud', data: { instruction: 'Full alphabet groups:', phrase: 'Alif bā tā thā jīm ḥā — khā dāl dhāl rā zāy sīn shīn — ṣād ḍād ṭā ẓā ʿayn ghayn — fā qāf kāf lām mīm nūn hā wāw yā' } }
-        ]
-    },
-    // ── Unit 7: First Words & Greetings ──
-    {
-        id: 7, title: 'الكلمات الأولى — First Words & Greetings', desc: 'Read and use essential Arabic greetings and phrases.',
-        unitType: 'situational', grammar: ['reading real words', 'greeting patterns'],
-        vocab: ['مرحبا', 'السلام عليكم', 'شكراً', 'من فضلك', 'نعم', 'لا', 'مع السلامة'],
-        teachSlides: [
-            { type: 'explain', mascotText: "Now you can read letters and vowels — let's read real words! The most important Arabic greeting: السلام عليكم (as-salāmu ʿalaykum) — 'Peace be upon you'. Reply: وعليكم السلام.", mascotEmotion: 'happy' },
-            { type: 'vocab-intro', mascotText: "Essential Arabic greetings:", mascotEmotion: 'happy',
-              words: [{ en: 'مرحبا (marḥaba)', ru: 'Привет' }, { en: 'السلام عليكم', ru: 'Мир вам' }, { en: 'شكراً (shukran)', ru: 'Спасибо' }, { en: 'من فضلك (min faḍlak)', ru: 'Пожалуйста' }, { en: 'نعم (naʿam)', ru: 'Да' }, { en: 'لا (lā)', ru: 'Нет' }, { en: 'مع السلامة (maʿ as-salāma)', ru: 'До свидания' }] },
-            { type: 'tip', mascotText: "شكراً (shukran) means 'thank you' — works everywhere in the Arab world. Try to spot the letters you learned: ش + ك + ر + ا + ً", mascotEmotion: 'happy', tipText: "شكراً = shukran = Thank you · عفواً = You're welcome" }
-        ],
-        exercises: [
-            { type: 'match-pairs', data: { instruction: 'Match Arabic to meaning', pairs: [{ left: 'مرحبا', right: 'Hello' }, { left: 'شكراً', right: 'Thank you' }, { left: 'نعم', right: 'Yes' }, { left: 'لا', right: 'No' }] } },
-            { type: 'fill-bubble', data: { instruction: 'Reply to السلام عليكم:', sentence: 'The reply is:', options: ['شكراً', 'وعليكم السلام', 'مرحبا'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: '"Thank you" in Arabic:', sentence: 'Thank you = ___', options: ['مرحبا', 'شكراً', 'من فضلك'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: '"Goodbye" in Arabic:', sentence: 'Goodbye = ___', options: ['مع السلامة', 'السلام عليكم', 'نعم'], correct: 0 } },
-            { type: 'speak-aloud', data: { instruction: 'Say these greetings:', phrase: 'As-salāmu ʿalaykum. Marḥaba. Shukran. Maʿ as-salāma.' } },
-            { type: 'listen-type', data: { instruction: 'Listen and type in transliteration', text: 'shukran', hint: 'Thank you' } }
-        ]
-    },
-    // ── Unit 8: Self-Introduction & Numbers ──
-    {
-        id: 8, title: 'أنا... — Self-Introduction & Numbers', desc: 'Introduce yourself and count 1–10 in Arabic.',
-        unitType: 'situational', grammar: ['أنا (anā) = I', 'اسمي (ismī) = my name', 'Arabic numerals 1-10'],
-        vocab: ['أنا', 'اسمي', 'أنتَ', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة', 'عشرة'],
-        teachSlides: [
-            { type: 'explain', mascotText: "Let's put your reading skills to use! أنا (anā) = I. اسمي (ismī) = my name. You can now introduce yourself: أنا [name]. اسمي [name].", mascotEmotion: 'happy' },
-            { type: 'vocab-intro', mascotText: "Numbers 1-10:", mascotEmotion: 'happy',
-              words: [{ en: '١ واحد (wāḥid)', ru: 'один' }, { en: '٢ اثنان (ithnān)', ru: 'два' }, { en: '٣ ثلاثة (thalātha)', ru: 'три' }, { en: '٤ أربعة (arbaʿa)', ru: 'четыре' }, { en: '٥ خمسة (khamsa)', ru: 'пять' }, { en: '٦ ستة (sitta)', ru: 'шесть' }, { en: '٧ سبعة (sabʿa)', ru: 'семь' }, { en: '٨ ثمانية (thamāniya)', ru: 'восемь' }, { en: '٩ تسعة (tisʿa)', ru: 'девять' }, { en: '١٠ عشرة (ʿashara)', ru: 'десять' }] },
-            { type: 'tip', mascotText: "Arabic numbers in text go left-to-right (١٢٣), even though Arabic text goes right-to-left! Also: Eastern Arabic digits (١٢٣) are used alongside Western digits (123).", mascotEmotion: 'happy', tipText: "Text: right→left · Numbers: left→right" }
-        ],
-        exercises: [
-            { type: 'fill-bubble', data: { instruction: '"I" in Arabic:', sentence: '"I" = ___', options: ['هو', 'أنا', 'أنتَ'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: '"My name" in Arabic:', sentence: '"My name" = ___', options: ['أنا', 'اسمي', 'هو'], correct: 1 } },
-            { type: 'match-pairs', data: { instruction: 'Match number to Arabic', pairs: [{ left: '1', right: 'واحد' }, { left: '3', right: 'ثلاثة' }, { left: '5', right: 'خمسة' }, { left: '7', right: 'سبعة' }] } },
-            { type: 'fill-bubble', data: { instruction: 'What comes after ٤?', sentence: '٤, ___', options: ['ثلاثة', 'خمسة', 'ستة'], correct: 1 } },
-            { type: 'fill-bubble', data: { instruction: '٢ + ٣ = ?', sentence: 'اثنان + ثلاثة = ___', options: ['أربعة', 'خمسة', 'ستة'], correct: 1 } },
-            { type: 'speak-aloud', data: { instruction: 'Introduce yourself and count:', phrase: 'Anā [your name]. Wāḥid, ithnān, thalātha, arbaʿa, khamsa, sitta, sabʿa, thamāniya, tisʿa, ʿashara!' } }
-        ]
-    }
-]/* ============================================
+/* ============================================
    LANGY — FULL CURRICULUM DATA v3
    CEFR-aligned original curriculum: Pre-A1 → C2
    ~95 units across 7 levels · ~600+ exercises
@@ -409,7 +240,7 @@ const LangyCurriculum = {
                     { type: 'fill-bubble', data: { instruction: 'Choose the correct form', sentence: 'He ___ a teacher.', options: ['am', 'is', 'are'], correct: 1 } },
                     { type: 'word-shuffle', data: { instruction: 'Put the words in order', words: ['is', 'she', 'from', 'Japan'], correct: ['she', 'is', 'from', 'Japan'] } },
                     { type: 'word-shuffle', data: { instruction: 'Put the words in order', words: ['are', 'we', 'happy'], correct: ['we', 'are', 'happy'] } },
-                    { type: 'match-pairs', data: { instruction: 'Match subject with verb BE', pairs: [{ left: 'I', right: 'am' }, { left: 'He', right: 'is' }, { left: 'You', right: 'are' }, { left: 'They', right: 'are' }] } },
+                        { type: 'match-pairs', data: { instruction: 'Match subject with verb BE', pairs: [{ left: 'I', right: 'am' }, { left: 'He', right: 'is' }, { left: 'You', right: 'are (you)' }, { left: 'They', right: 'are (they)' }] } },
                     { type: 'type-translation', data: { instruction: 'Translate to English', sourceText: 'Я студент.', fromLang: 'RU', toLang: 'EN', answer: 'I am a student' } },
                     { type: 'listen-type', data: { instruction: 'Listen and type', text: 'Hello, my name is Alex.', hint: 'Start with a capital letter.' } },
                     { type: 'fill-bubble', data: { instruction: 'Negative form: She ___ a doctor.', sentence: 'She ___ a doctor. (negative)', options: ["isn't", "aren't", "am not"], correct: 0 } },
@@ -1553,7 +1384,7 @@ const LangyCurriculum = {
                     { type: 'fill-bubble', data: { instruction: 'Uncountable', sentence: 'She gave me good ___.', options: ['advice', 'advices', 'an advice'], correct: 0 } },
                     { type: 'word-shuffle', data: { instruction: 'Sentence', words: ['much', 'how', 'does', 'it', 'cost'], correct: ['how', 'much', 'does', 'it', 'cost'] } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'У нас много яблок.', fromLang: 'RU', toLang: 'EN', answer: 'We have a lot of apples' } },
-                    { type: 'match-pairs', data: { instruction: 'Countable or Uncountable?', pairs: [{ left: 'apple', right: 'countable' }, { left: 'water', right: 'uncountable' }, { left: 'money', right: 'uncountable' }, { left: 'egg', right: 'countable' }] } },
+{ type: 'match-pairs', data: { instruction: 'Countable or Uncountable?', pairs: [{ left: 'apple', right: 'countable (one apple)' }, { left: 'water', right: 'uncountable (water)' }, { left: 'money', right: 'uncountable (money)' }, { left: 'egg', right: 'countable (one egg)' }] } },
                     { type: 'speak-aloud', data: { instruction: 'Talk about food:', phrase: "I need some eggs, a lot of flour, and a little sugar. I don't have any butter." } }
                 ]
             },
@@ -1869,7 +1700,7 @@ const LangyCurriculum = {
                     { type: 'fill-bubble', data: { instruction: 'Past role', sentence: 'I ___ at Google from 2018 to 2020.', options: ["'ve worked", 'worked', 'work'], correct: 1 } },
                     { type: 'fill-bubble', data: { instruction: 'PP', sentence: "I ___ managed teams of up to 20 people.", options: ["'ve", 'had', 'was'], correct: 0 } },
                     { type: 'fill-bubble', data: { instruction: 'PS', sentence: 'I ___ from university in 2017.', options: ["'ve graduated", 'graduated', 'graduate'], correct: 1 } },
-                    { type: 'match-pairs', data: { instruction: 'Match the tense to the signal', pairs: [{ left: 'for 5 years', right: 'Present Perfect' }, { left: 'in 2020', right: 'Past Simple' }, { left: 'since 2019', right: 'Present Perfect' }, { left: 'last year', right: 'Past Simple' }] } },
+                    { type: 'match-pairs', data: { instruction: 'Match the tense to the signal', pairs: [{ left: 'for 5 years', right: 'Present Perfect (duration)' }, { left: 'in 2020', right: 'Past Simple (finished time)' }, { left: 'since 2019', right: 'Present Perfect (since)' }, { left: 'last year', right: 'Past Simple (last year)' }] } },
                     { type: 'word-shuffle', data: { instruction: 'Interview answer', words: ['managed', "I've", 'teams', 'of', 'up', 'to', '20', 'people'], correct: ["I've", 'managed', 'teams', 'of', 'up', 'to', '20', 'people'] } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Я работаю в этой компании с 2019 года.', fromLang: 'RU', toLang: 'EN', answer: "I've worked at this company since 2019" } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Я закончил университет в 2018 году.', fromLang: 'RU', toLang: 'EN', answer: 'I graduated from university in 2018' } },
@@ -1888,7 +1719,7 @@ const LangyCurriculum = {
                     { type: 'fill-bubble', data: { instruction: 'PP', sentence: "They ___ yet.", options: ["haven't arrived", "didn't arrive", "aren't arriving"], correct: 0 } },
                     { type: 'fill-bubble', data: { instruction: 'PP vs PS', sentence: "I ___ my car last week.", options: ["'ve sold", 'sold', 'sell'], correct: 1 } },
                     { type: 'fill-bubble', data: { instruction: 'for/since', sentence: "We've been friends ___ childhood.", options: ['for', 'since'], correct: 1 } },
-                    { type: 'match-pairs', data: { instruction: 'Match signal word to tense', pairs: [{ left: 'yesterday', right: 'Past Simple' }, { left: 'ever', right: 'Present Perfect' }, { left: 'in 2020', right: 'Past Simple' }, { left: 'already', right: 'Present Perfect' }] } },
+                    { type: 'match-pairs', data: { instruction: 'Match signal word to tense', pairs: [{ left: 'yesterday', right: 'Past Simple (yesterday)' }, { left: 'ever', right: 'Present Perfect (ever)' }, { left: 'in 2020', right: 'Past Simple (in 2020)' }, { left: 'already', right: 'Present Perfect (already)' }] } },
                     { type: 'word-shuffle', data: { instruction: 'PP sentence', words: ['you', 'have', 'finished', 'yet', 'your', 'homework'], correct: ['have', 'you', 'finished', 'your', 'homework', 'yet'] } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Ты уже поел?', fromLang: 'RU', toLang: 'EN', answer: 'Have you eaten yet?' } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Она только что пришла домой.', fromLang: 'RU', toLang: 'EN', answer: "She's just come home" } },
@@ -1897,7 +1728,7 @@ const LangyCurriculum = {
                 ]
             },
             // ── B1 Unit 6 ──
-            { id: 6, title: 'Infinitive vs Gerund', desc: 'to + verb vs verb + -ing after different verbs.', unitType: 'grammar', grammar: ['infinitive vs gerund'], vocab: ['want/enjoy/decide/avoid/promise/suggest'], homework: { prompt: 'Write 10 sentences using verbs that take infinitive and gerund.' }, teachSlides: [{ type: 'explain', mascotText: "Some verbs need TO + verb (I want TO go). Others need verb-ING (I enjoy going). Some take both! Let's learn the rules.", mascotEmotion: 'happy' }, { type: 'compare', mascotText: "Which verbs take which form:", mascotEmotion: 'happy', left: { label: '+ TO (infinitive)', items: ['want to', 'decide to', 'hope to', 'promise to', 'need to', 'learn to'] }, right: { label: '+ -ING (gerund)', items: ['enjoy -ing', 'avoid -ing', 'suggest -ing', 'mind -ing', 'finish -ing', "can't stand -ing"] } }, { type: 'examples', mascotText: "Some verbs take BOTH — but meaning changes!", mascotEmotion: 'thinking', items: [{ base: 'stop + -ing', past: "I stopped smoking. (quit the habit)", highlight: 'quit' }, { base: 'stop + to', past: "I stopped to smoke. (paused to have a cigarette)", highlight: 'paused' }, { base: 'remember + -ing', past: "I remember locking the door. (memory of past)", highlight: 'memory' }, { base: 'remember + to', past: "Remember to lock the door. (don't forget!)", highlight: "don't forget" }] }, { type: 'quiz-check', mascotText: "'I enjoy ___' — which form?", mascotEmotion: 'thinking', options: ['to swim', 'swimming', 'swim'], correct: 1 }], exercises: [{ type: 'fill-bubble', data: { instruction: 'Infinitive', sentence: 'I want ___ English.', options: ['learn', 'to learn', 'learning'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Gerund', sentence: 'I enjoy ___ books.', options: ['to read', 'reading', 'read'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Gerund', sentence: 'She avoids ___ fast food.', options: ['to eat', 'eating', 'eat'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Infinitive', sentence: 'He decided ___ a new car.', options: ['buying', 'to buy', 'buy'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Both', sentence: 'I stopped ___ . (quit the habit)', options: ['to smoke', 'smoking'], correct: 1 } }, { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Я решил изучать французский.', fromLang: 'RU', toLang: 'EN', answer: 'I decided to study French' } }, { type: 'match-pairs', data: { instruction: 'Verb + form', pairs: [{ left: 'want', right: 'to + verb' }, { left: 'enjoy', right: 'verb-ing' }, { left: 'decide', right: 'to + verb' }, { left: 'avoid', right: 'verb-ing' }] } }, { type: 'speak-aloud', data: { instruction: 'Practice:', phrase: "I want to learn English. I enjoy reading books. I've decided to travel more. I avoid eating junk food." } }] },
+            { id: 6, title: 'Infinitive vs Gerund', desc: 'to + verb vs verb + -ing after different verbs.', unitType: 'grammar', grammar: ['infinitive vs gerund'], vocab: ['want/enjoy/decide/avoid/promise/suggest'], homework: { prompt: 'Write 10 sentences using verbs that take infinitive and gerund.' }, teachSlides: [{ type: 'explain', mascotText: "Some verbs need TO + verb (I want TO go). Others need verb-ING (I enjoy going). Some take both! Let's learn the rules.", mascotEmotion: 'happy' }, { type: 'compare', mascotText: "Which verbs take which form:", mascotEmotion: 'happy', left: { label: '+ TO (infinitive)', items: ['want to', 'decide to', 'hope to', 'promise to', 'need to', 'learn to'] }, right: { label: '+ -ING (gerund)', items: ['enjoy -ing', 'avoid -ing', 'suggest -ing', 'mind -ing', 'finish -ing', "can't stand -ing"] } }, { type: 'examples', mascotText: "Some verbs take BOTH — but meaning changes!", mascotEmotion: 'thinking', items: [{ base: 'stop + -ing', past: "I stopped smoking. (quit the habit)", highlight: 'quit' }, { base: 'stop + to', past: "I stopped to smoke. (paused to have a cigarette)", highlight: 'paused' }, { base: 'remember + -ing', past: "I remember locking the door. (memory of past)", highlight: 'memory' }, { base: 'remember + to', past: "Remember to lock the door. (don't forget!)", highlight: "don't forget" }] }, { type: 'quiz-check', mascotText: "'I enjoy ___' — which form?", mascotEmotion: 'thinking', options: ['to swim', 'swimming', 'swim'], correct: 1 }], exercises: [{ type: 'fill-bubble', data: { instruction: 'Infinitive', sentence: 'I want ___ English.', options: ['learn', 'to learn', 'learning'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Gerund', sentence: 'I enjoy ___ books.', options: ['to read', 'reading', 'read'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Gerund', sentence: 'She avoids ___ fast food.', options: ['to eat', 'eating', 'eat'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Infinitive', sentence: 'He decided ___ a new car.', options: ['buying', 'to buy', 'buy'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Both', sentence: 'I stopped ___ . (quit the habit)', options: ['to smoke', 'smoking'], correct: 1 } }, { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Я решил изучать французский.', fromLang: 'RU', toLang: 'EN', answer: 'I decided to study French' } }, { type: 'match-pairs', data: { instruction: 'Verb + form', pairs: [{ left: 'want', right: 'to + verb (want)' }, { left: 'enjoy', right: 'verb-ing (enjoy)' }, { left: 'decide', right: 'to + verb (decide)' }, { left: 'avoid', right: 'verb-ing (avoid)' }] } }, { type: 'speak-aloud', data: { instruction: 'Practice:', phrase: "I want to learn English. I enjoy reading books. I've decided to travel more. I avoid eating junk food." } }] },
             // ── B1 Unit 7 ──
             // ── B1 Unit 7 ──
             {
@@ -1932,7 +1763,7 @@ const LangyCurriculum = {
                 ]
             },
             // ── B1 Unit 8 ──
-            { id: 8, title: 'First Conditional: if... will...', desc: 'Real future possibilities.', unitType: 'grammar', grammar: ['First Conditional: if + PS → will'], vocab: ['possibilities', 'plans', 'warnings'], homework: { prompt: 'Write 8 First Conditional sentences about your life.' }, teachSlides: [{ type: 'explain', mascotText: "First Conditional = real possibilities. If it RAINS (real), I WILL stay home. The structure: IF + Present Simple, ... WILL + verb.", mascotEmotion: 'happy' }, { type: 'examples', mascotText: "IF-clause = Present Simple. Main clause = WILL:", mascotEmotion: 'happy', items: [{ base: 'Plan', past: "If I pass the exam, I'll celebrate.", highlight: "If...will" }, { base: 'Warning', past: "If you don't hurry, you'll be late.", highlight: "If don't...will" }, { base: 'Promise', past: "If you help me, I'll buy you dinner.", highlight: "If...will" }, { base: 'Swap OK', past: "I'll help you if you ask me.", highlight: "will...if" }] }, { type: 'quiz-check', mascotText: "'If she ___ hard, she'll pass the exam.'", mascotEmotion: 'thinking', options: ['will study', 'studies', 'study'], correct: 1 }, { type: 'tip', mascotText: "NO WILL in the IF-clause! ❌ If it will rain... ✅ If it rains... The IF part always uses Present Simple!", mascotEmotion: 'happy', tipText: "❌ If it will rain → ✅ If it rains · ❌ If I will go → ✅ If I go" }], exercises: [{ type: 'fill-bubble', data: { instruction: '1st Cond', sentence: "If it rains, I ___ stay home.", options: ['will', 'would', 'am'], correct: 0 } }, { type: 'fill-bubble', data: { instruction: 'IF clause', sentence: "If she ___ hard, she'll pass.", options: ['will study', 'studies', 'study'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Negative', sentence: "If you ___ hurry, you'll be late.", options: ["won't", "don't", "didn't"], correct: 1 } }, { type: 'word-shuffle', data: { instruction: '1st Conditional', words: ["I'll", 'you', 'if', 'help', 'ask', 'me'], correct: ["I'll", 'help', 'you', 'if', 'you', 'ask', 'me'] } }, { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Если будет солнечно, мы пойдём на пляж.', fromLang: 'RU', toLang: 'EN', answer: "If it's sunny, we'll go to the beach" } }, { type: 'speak-aloud', data: { instruction: 'Practice:', phrase: "If I find a good job, I'll move to London. If I have time, I'll learn a new language." } }] },
+            { id: 8, title: 'First Conditional: if... will...', desc: 'Real future possibilities.', unitType: 'grammar', grammar: ['First Conditional: if + PS → will'], vocab: ['possibilities', 'plans', 'warnings'], homework: { prompt: 'Write 8 First Conditional sentences about your life.' }, teachSlides: [{ type: 'explain', mascotText: "First Conditional = real possibilities. If it RAINS (real), I WILL stay home. The structure: IF + Present Simple, ... WILL + verb.", mascotEmotion: 'happy' }, { type: 'examples', mascotText: "IF-clause = Present Simple. Main clause = WILL:", mascotEmotion: 'happy', items: [{ base: 'Plan', past: "If I pass the exam, I'll celebrate.", highlight: "If...will" }, { base: 'Warning', past: "If you don't hurry, you'll be late.", highlight: "If don't...will" }, { base: 'Promise', past: "If you help me, I'll buy you dinner.", highlight: "If...will" }, { base: 'Swap OK', past: "I'll help you if you ask me.", highlight: "will...if" }] }, { type: 'quiz-check', mascotText: "'If she ___ hard, she'll pass the exam.'", mascotEmotion: 'thinking', options: ['will study', 'studies', 'study'], correct: 1 }, { type: 'tip', mascotText: "NO WILL in the IF-clause! ❌ If it will rain... ✅ If it rains... The IF part always uses Present Simple!", mascotEmotion: 'happy', tipText: "❌ If it will rain → ✅ If it rains · ❌ If I will go → ✅ If I go" }], exercises: [{ type: 'fill-bubble', data: { instruction: '1st Cond', sentence: "If it rains, I ___ stay home.", options: ['will', 'would', 'am'], correct: 0 } }, { type: 'fill-bubble', data: { instruction: 'IF clause', sentence: "If she ___ hard, she'll pass.", options: ['will study', 'studies', 'study'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'Negative', sentence: "If you ___ hurry, you'll be late.", options: ["won't", "don't", "didn't"], correct: 1 } }, { type: 'word-shuffle', data: { instruction: '1st Conditional', words: ["I'll", 'you', 'if', 'help', 'you', 'ask', 'me'], correct: ["I'll", 'help', 'you', 'if', 'you', 'ask', 'me'] } }, { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Если будет солнечно, мы пойдём на пляж.', fromLang: 'RU', toLang: 'EN', answer: "If it's sunny, we'll go to the beach" } }, { type: 'speak-aloud', data: { instruction: 'Practice:', phrase: "If I find a good job, I'll move to London. If I have time, I'll learn a new language." } }] },
             // ── B1 Unit 9 ──
             { id: 9, title: 'Second Conditional: dreams', desc: 'Unreal/imaginary situations.', unitType: 'grammar', grammar: ['Second Conditional: if + past → would'], vocab: ['dreams', 'hypotheticals', 'imagination'], homework: { prompt: 'Write about 5 things you would do if you were a millionaire.' }, teachSlides: [{ type: 'explain', mascotText: "Second Conditional = UNREAL situations. If I WON the lottery (I probably won't), I WOULD travel the world. Structure: IF + Past Simple, ... WOULD + verb.", mascotEmotion: 'happy' }, { type: 'compare', mascotText: "First vs Second Conditional:", mascotEmotion: 'happy', left: { label: '1st: REAL possibility', items: ['If it rains, I\'ll stay home.', '(it might rain)', 'If + Present → will'] }, right: { label: '2nd: UNREAL / dream', items: ["If I were rich, I'd travel.", "(I'm not rich)", 'If + Past → would'] } }, { type: 'quiz-check', mascotText: "'If I ___ a million dollars, I'd buy a house.'", mascotEmotion: 'thinking', options: ['have', 'had', 'will have'], correct: 1 }, { type: 'tip', mascotText: "With BE in the IF-clause, use WERE for all persons (formal). I were, you were, he were, she were. 'If I WERE you, I'd...' — classic advice phrase!", mascotEmotion: 'happy', tipText: "If I were rich... · If she were here... · If I were you, I'd study harder." }], exercises: [{ type: 'fill-bubble', data: { instruction: '2nd Cond', sentence: "If I had a million, I ___ travel.", options: ['will', 'would', 'can'], correct: 1 } }, { type: 'fill-bubble', data: { instruction: 'IF clause', sentence: "If I ___ you, I'd apologize.", options: ['am', 'was', 'were'], correct: 2 } }, { type: 'fill-bubble', data: { instruction: '2nd Cond', sentence: 'If she ___ harder, she would pass.', options: ['studies', 'studied', 'will study'], correct: 1 } }, { type: 'word-shuffle', data: { instruction: 'Dream', words: ['would', 'I', 'travel', 'if', 'I', 'rich', 'were'], correct: ['I', 'would', 'travel', 'if', 'I', 'were', 'rich'] } }, { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Если бы я был президентом, я бы всё изменил.', fromLang: 'RU', toLang: 'EN', answer: "If I were president, I would change everything" } }, { type: 'speak-aloud', data: { instruction: 'Dream big:', phrase: "If I won the lottery, I'd buy a house on the beach. If I could fly, I'd travel everywhere." } }] },
             // ── B1 Unit 10 ──
@@ -2012,7 +1843,7 @@ const LangyCurriculum = {
                     { type: 'fill-bubble', data: { instruction: 'PP', sentence: 'She was hungry because she ___ eaten all day.', options: ["hadn't", "hasn't", "didn't"], correct: 0 } },
                     { type: 'fill-bubble', data: { instruction: 'PP', sentence: "I ___ never been abroad before that trip.", options: ['have', 'had', 'was'], correct: 1 } },
                     { type: 'fill-bubble', data: { instruction: 'PP vs PS', sentence: 'By the time the taxi came, we ___ already ___.', options: ['have / left', 'had / left', 'were / leaving'], correct: 1 } },
-                    { type: 'match-pairs', data: { instruction: 'What happened first?', pairs: [{ left: 'She had cooked dinner', right: '1st (earlier)' }, { left: 'when he arrived.', right: '2nd (later)' }, { left: 'I had studied French', right: '1st (earlier)' }, { left: 'before I moved to Paris.', right: '2nd (later)' }] } },
+                    { type: 'match-pairs', data: { instruction: 'What happened first?', pairs: [{ left: 'She had cooked dinner', right: '1st earlier (dinner)' }, { left: 'when he arrived.', right: '2nd later (arrival)' }, { left: 'I had studied French', right: '1st earlier (French)' }, { left: 'before I moved to Paris.', right: '2nd later (Paris)' }] } },
                     { type: 'word-shuffle', data: { instruction: 'Sequence', words: ['had', 'I', 'already', 'eaten', 'when', 'she', 'called'], correct: ['I', 'had', 'already', 'eaten', 'when', 'she', 'called'] } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Когда я пришёл, фильм уже начался.', fromLang: 'RU', toLang: 'EN', answer: 'When I arrived, the film had already started' } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Она никогда не видела море до той поездки.', fromLang: 'RU', toLang: 'EN', answer: 'She had never seen the sea before that trip' } },
@@ -2500,7 +2331,7 @@ const LangyCurriculum = {
                     { type: 'fill-bubble', data: { instruction: 'Comparison', sentence: 'He prefers tea, ___ she drinks coffee.', options: ['whereas', 'moreover'], correct: 0 } },
                     { type: 'fill-bubble', data: { instruction: 'Contrast', sentence: 'The report was thorough. ___, it failed to address the core issue.', options: ['Furthermore', 'Nevertheless'], correct: 1 } },
                     { type: 'match-pairs', data: { instruction: 'Basic → C1', pairs: [{ left: 'But...', right: 'However / Nevertheless' }, { left: 'And also...', right: 'Moreover / Furthermore' }, { left: 'So...', right: 'Therefore / Consequently' }, { left: 'On the other hand...', right: 'Whereas / In contrast' }] } },
-                    { type: 'word-shuffle', data: { instruction: 'Linkers', words: ['expensive', 'furthermore', 'it', 'poorly', 'is', 'designed', 'was'], correct: ['it', 'was', 'expensive', 'furthermore', 'it', 'is', 'poorly', 'designed'] } },
+                    { type: 'word-shuffle', data: { instruction: 'Linkers', words: ['expensive', 'furthermore', 'it', 'poorly', 'is', 'designed', 'was', 'it'], correct: ['it', 'was', 'expensive', 'furthermore', 'it', 'is', 'poorly', 'designed'] } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Он усердно работал; тем не менее, он провалился.', fromLang: 'RU', toLang: 'EN', answer: 'He worked hard; nevertheless, he failed' } },
                     { type: 'listen-type', data: { instruction: 'Listen and type', text: "The initial results were promising; however, further research is required.", hint: 'Contrast marker with semicolon' } },
                     { type: 'speak-aloud', data: { instruction: 'Formal speech:', phrase: "The initial tests were successful; therefore, we have decided to proceed. Moreover, the budget allows for further expansion." } }
@@ -2879,8 +2710,8 @@ const LangyCurriculum = {
                     { type: 'fill-bubble', data: { instruction: 'Perception (Whole)', sentence: "I saw the thief ___ the bag and run.", options: ['snatch', 'snatching'], correct: 0 } },
                     { type: 'fill-bubble', data: { instruction: 'Dread', sentence: "She dreads ___ asked to speak in public.", options: ['to be', 'being'], correct: 1 } },
                     { type: 'fill-bubble', data: { instruction: 'Can\'t bear', sentence: "He can't bear ___ criticized unfairly.", options: ['to be', 'being'], correct: 1 } },
-                    { type: 'match-pairs', data: { instruction: 'Match verb to pattern', pairs: [{ left: 'resent', right: 'verb + -ing' }, { left: 'manage', right: 'verb + to + inf' }, { left: 'see (whole)', right: 'verb + bare inf' }, { left: 'hear (in progress)', right: 'verb + -ing' }] } },
-                    { type: 'word-shuffle', data: { instruction: 'Complementation', words: ['to', 'manage', 'persuade', 'how', 'did', 'you', 'her', 'stay'], correct: ['how', 'did', 'you', 'manage', 'to', 'persuade', 'her', 'to', 'stay'] } },
+                    { type: 'match-pairs', data: { instruction: 'Match verb to pattern', pairs: [{ left: 'resent', right: 'verb + -ing (resent)' }, { left: 'manage', right: 'verb + to + inf' }, { left: 'see (whole)', right: 'verb + bare inf' }, { left: 'hear (in progress)', right: 'verb + -ing (hear)' }] } },
+                    { type: 'word-shuffle', data: { instruction: 'Complementation', words: ['to', 'manage', 'persuade', 'how', 'did', 'you', 'her', 'to', 'stay'], correct: ['how', 'did', 'you', 'manage', 'to', 'persuade', 'her', 'to', 'stay'] } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Он не выносит, когда его прерывают.', fromLang: 'RU', toLang: 'EN', answer: 'He cant bear being interrupted' } },
                     { type: 'listen-type', data: { instruction: 'Listen and type', text: "I resented him trying to persuade me to abandon the project entirely.", hint: 'resent + object + -ing + to + infinitive' } },
                     { type: 'speak-aloud', data: { instruction: 'Complex chains:', phrase: "I resented him trying to persuade me to abandon the project." } }
@@ -2961,7 +2792,7 @@ const LangyCurriculum = {
                     { type: 'fill-bubble', data: { instruction: 'Nominalize', sentence: "The government responded adequately. -> The government's ___ was adequate.", options: ['response', 'responding'], correct: 0 } },
                     { type: 'word-shuffle', data: { instruction: 'Dense academic', words: ['led', 'the', 'system', 'failure', 'of', 'to', 'collapse', 'the'], correct: ['the', 'failure', 'of', 'the', 'system', 'led', 'to', 'collapse'] } }, // "The failure of the system led to collapse", adjusted slightly to make sense.
                     // Corrected version:
-                    { type: 'word-shuffle', data: { instruction: 'Dense academic', words: ['led', 'the', 'system', 'failure', 'of', 'to', 'catastrophe'], correct: ['the', 'failure', 'of', 'the', 'system', 'led', 'to', 'catastrophe'] } },
+                    { type: 'word-shuffle', data: { instruction: 'Dense academic', words: ['led', 'the', 'system', 'failure', 'of', 'the', 'to', 'catastrophe'], correct: ['the', 'failure', 'of', 'the', 'system', 'led', 'to', 'catastrophe'] } },
                     { type: 'type-translation', data: { instruction: 'Translate', sourceText: 'Реализация этого плана займет месяцы.', fromLang: 'RU', toLang: 'EN', answer: 'The implementation of this plan will take months' } },
                     { type: 'speak-aloud', data: { instruction: 'Academic read:', phrase: "The rapid degradation of the ecosystem is a direct result of industrial expansion." } }
                 ]
@@ -3493,7 +3324,7 @@ const LangyCurriculum = {
         return this.textbooks.map(tb => {
             const tbIdx = order.indexOf(tb.cefr);
             const mastery = typeof LangyState !== 'undefined' ? LangyState.progress.mastery : {};
-            const currentTbId = typeof LangyState !== 'undefined' ? LangyState.aiMemory.currentTextbookId : null;
+            const currentTbId = typeof LangyState !== 'undefined' ? (LangyState.aiMemory?.currentTextbookId ?? null) : null;
             const currentUnitId = typeof LangyState !== 'undefined' ? LangyState.progress.currentUnitId : 1;
 
             // Count completed units
@@ -3532,7 +3363,7 @@ const LangyCurriculum = {
         if (!tb) return [];
 
         const mastery = typeof LangyState !== 'undefined' ? LangyState.progress.mastery : {};
-        const currentTbId = typeof LangyState !== 'undefined' ? LangyState.aiMemory.currentTextbookId : null;
+        const currentTbId = typeof LangyState !== 'undefined' ? (LangyState.aiMemory?.currentTextbookId ?? null) : null;
         const currentUnitId = typeof LangyState !== 'undefined' ? LangyState.progress.currentUnitId : 1;
         const isActiveTb = tb.id === currentTbId;
         const userCefr = typeof LangyState !== 'undefined' ? (LangyState.user.level || '').substring(0, 2) : '';

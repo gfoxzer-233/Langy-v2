@@ -707,7 +707,10 @@ You are not just a tutor. You are the rhythmic expressive confidence of Spanish.
         recognition.onerror = event => {
             isListening = false;
             console.warn('STT Error:', event.error);
-            if (onEnd) onEnd('', 0);
+            // Pass error type so UI can distinguish permission denial from other errors
+            const errorType = (event.error === 'not-allowed' || event.error === 'service-not-allowed')
+                ? 'denied' : event.error || 'unknown';
+            if (onEnd) onEnd('', 0, errorType);
         };
 
         try {
@@ -1179,7 +1182,7 @@ Talk mode avoids: long grammar lectures, too many corrections at once, academic 
         messages.push({ role: 'user', content: userMessage });
 
         try {
-            const response = await fetch(LangyAI.API_URL, {
+            const response = await LangyAI.fetchWithTimeout(LangyAI.API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1196,14 +1199,7 @@ Talk mode avoids: long grammar lectures, too many corrections at once, academic 
             return data.choices?.[0]?.message?.content || "Sorry, I didn't catch that. Could you say it again?";
         } catch (err) {
             console.error('Talk AI error:', err);
-            const fallbacks = [
-                "That's interesting! Tell me more about that.",
-                'Oh really? And what happened next?',
-                'I see! What do you think about that?',
-                "That's a great point. Can you give me an example?",
-                "Hmm, that's cool! What else can you tell me?",
-            ];
-            return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+            return "I'm having trouble connecting to AI right now. Your practice is safe; try again in a moment or continue with a short sentence.";
         }
     }
 
@@ -1274,7 +1270,7 @@ Rules:
 - Keep "why" very short: e.g. "past tense needed", "article missing", "word order".${coachExtra}`;
 
         try {
-            const response = await fetch(LangyAI.API_URL, {
+            const response = await LangyAI.fetchWithTimeout(LangyAI.API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -35,7 +35,7 @@ function renderLearning(container) {
     }
 
     // Build exercises: combine static unit exercises with dynamic generation
-    const EXERCISES_PER_SESSION = 10;
+    const EXERCISES_PER_SESSION = Math.max(1, LangyConfig.EXERCISES_PER_LESSON || 8);
     let exercises = [];
 
     if (typeof ExerciseGenerator !== 'undefined' && activeTb.cefr) {
@@ -575,13 +575,13 @@ function renderLearning(container) {
         const hw = unit.homework;
         target.innerHTML = `
             <div class="lesson-homework animate-in">
-                <div class="lesson-exercise__counter" style="display:flex; align-items:center; gap:var(--sp-2);">${LangyIcons.fileText} HOMEWORK / ДОМАШНЕЕ ЗАДАНИЕ</div>
-                <h3 style="margin: var(--sp-2) 0;">${unit.title} Review</h3>
+                <div class="lesson-exercise__counter" style="display:flex; align-items:center; gap:var(--sp-2);">${LangyIcons.fileText} ${{ en: 'HOMEWORK', ru: 'ДОМАШНЕЕ ЗАДАНИЕ', es: 'TAREA' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
+                <h3 style="margin: var(--sp-2) 0;">${unit.title} ${{ en: 'Review', ru: 'Повторение', es: 'Repaso' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</h3>
                 <p style="margin:var(--sp-3) 0; color:var(--text-secondary);">${hw?.prompt || 'Write a short text about this topic.'}</p>
-                <textarea class="input lesson-homework__textarea" id="hw-input" placeholder="Начните писать здесь / Start writing here..."></textarea>
+                <textarea class="input lesson-homework__textarea" id="hw-input" placeholder="${{ en: 'Start writing here...', ru: 'Начните писать здесь...', es: 'Empieza a escribir aquí...' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}"></textarea>
                 <div class="lesson-homework__actions">
                     <button class="btn btn--primary btn--full btn--lg" id="hw-submit" style="display:flex; align-items:center; justify-content:center; gap:var(--sp-2);">
-                        ${LangyIcons.upload} Отправить на проверку / Submit for Review
+                        ${LangyIcons.upload} ${{ en: 'Submit for Review', ru: 'Отправить на проверку', es: 'Enviar para revisión' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}
                     </button>
                 </div>
                 <div id="hw-result"></div>
@@ -595,25 +595,36 @@ function renderLearning(container) {
         submitBtn.onclick = async () => {
             const text = input.value.trim();
             if (text.length < 10) {
-                Anim.showToast('Слишком коротко! / Too short!');
+                Anim.showToast({ en: 'Too short!', ru: 'Слишком коротко!', es: '¡Muy corto!' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']);
                 return;
             }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `${LangyIcons.loader} AI проверяет... / AI is grading...`;
+            submitBtn.innerHTML = `${LangyIcons.loader} ${{ en: 'AI is grading...', ru: 'AI проверяет...', es: 'IA calificando...' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}`;
 
             try {
                 const result = await LangyAI.gradeHomework(hw?.prompt || unit.title, text);
                 showHomeworkGrade(resultArea, result, submitBtn);
             } catch (e) {
-                const mockResult = {
-                    score: Math.floor(Math.random() * 30) + 55,
-                    grade: 'C',
-                    feedback: 'Good effort! Keep practicing your grammar and vocabulary.',
-                };
-                showHomeworkGrade(resultArea, mockResult, submitBtn);
+                showHomeworkUnavailable(resultArea, submitBtn);
             }
         };
+    }
+
+    function showHomeworkUnavailable(target, submitBtn) {
+        target.innerHTML = `
+            <div class="lesson-grade animate-in" style="border-color: var(--warning);">
+                <div class="lesson-grade__header">
+                    <span class="lesson-grade__label">AI CHECK UNAVAILABLE</span>
+                    <span class="lesson-grade__score" style="color:var(--warning);">TRY AGAIN</span>
+                </div>
+                <div class="lesson-grade__feedback">
+                    We could not grade this homework right now. Your answer was not scored, and no progress was changed. Please try again when the connection is available.
+                </div>
+            </div>
+        `;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `${LangyIcons.refresh} ${i18n('learn.try_again')}`;
     }
 
     function showHomeworkGrade(target, result, submitBtn) {
@@ -621,7 +632,7 @@ function renderLearning(container) {
         target.innerHTML = `
             <div class="lesson-grade animate-in" style="border-color: ${passed ? 'var(--accent)' : 'var(--danger)'}">
                 <div class="lesson-grade__header">
-                    <span class="lesson-grade__label">AI EVALUATION</span>
+                    <span class="lesson-grade__label">${{ en: 'AI EVALUATION', ru: '\u041e\u0426\u0415\u041d\u041a\u0410 AI', es: 'EVALUACI\u00d3N IA' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</span>
                     <span class="lesson-grade__score" style="color:${passed ? 'var(--accent-dark)' : 'var(--danger)'}">
                         ${result.grade} (${result.score}%)
                     </span>
@@ -754,9 +765,9 @@ function renderLearning(container) {
                     return `
                     <div style="margin-top:var(--sp-3); padding:var(--sp-3); background:var(--danger-bg); border-radius:var(--radius-lg); border-left:3px solid var(--danger);">
                         <div style="font-size:var(--fs-xs); font-weight:var(--fw-bold); color:var(--danger); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:6px;">
-                            ${LangyIcons.alertTriangle} Grammar rules to review
+                            ${LangyIcons.alertTriangle} ${{ en: 'Grammar rules to review', ru: 'Грамматические правила для повторения', es: 'Reglas de gramática para repasar' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}
                         </div>
-                        ${ruleEntries.map(([rule, count]) => `<div style="font-size:var(--fs-xs); color:var(--text-secondary); padding:2px 0;">• <strong>${rule}</strong> — ${count} mistake${count > 1 ? 's' : ''}</div>`).join('')}
+                        ${ruleEntries.map(([rule, count]) => `<div style="font-size:var(--fs-xs); color:var(--text-secondary); padding:2px 0;">• <strong>${rule}</strong> — ${count} ${{ en: count > 1 ? 'mistakes' : 'mistake', ru: LangyI18n?.pluralize?.(count, 'ошибка', 'ошибки', 'ошибок') || 'ошибок', es: count > 1 ? 'errores' : 'error' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>`).join('')}
                     </div>
                     `;
                 })()}
@@ -826,19 +837,52 @@ function renderLearning(container) {
                     `;
                 })()}
 
+                ${(() => {
+                    // For beginners who just passed their first lesson, make speaking the primary CTA
+                    const _ll = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
+                    const _isFirstLesson = !LangyState.user.firstLessonCompleted;
+                    const _isBeginner = LangyState.user.confidenceLevel === 'zero' || LangyState.user.confidenceLevel === 'basic';
+                    const _passed = score >= LangyConfig.PASS_THRESHOLD;
+                    const _tutorName = typeof TalkEngine !== 'undefined' ? (TalkEngine.personas[LangyState.mascot?.selected || 0]?.name || { en: 'your tutor', ru: 'тьютором', es: 'tu tutor' }[_ll]) : { en: 'your tutor', ru: 'тьютором', es: 'tu tutor' }[_ll];
+                    const _speakPrimary = _isFirstLesson && _isBeginner && _passed;
+
+                    if (!_passed || isCheckpoint) {
+                        // Failed or checkpoint — Home primary, retry secondary
+                        return `
+                <button class="btn btn--primary btn--xl btn--full" id="summary-finish" style="margin-top:var(--sp-3);">
+                    ${LangyIcons.home} ${i18n('results.home')}
+                </button>
+                ${score < LangyConfig.PASS_THRESHOLD ? `<button class="btn btn--ghost btn--full" id="summary-retry" style="margin-top:var(--sp-2); display:flex; align-items:center; justify-content:center; gap:var(--sp-2);">${LangyIcons.refresh} ${typeof MascotPersona !== 'undefined' ? MascotPersona.tone('retry') : i18n('learn.try_again')}</button>` : ''}`;
+                    } else if (_speakPrimary) {
+                        // First-lesson beginner who passed → speaking is PRIMARY
+                        return `
+                <button class="btn btn--primary btn--xl btn--full" id="summary-speak" style="margin-top:var(--sp-3); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:var(--sp-4);">
+                    <div style="display:flex; align-items:center; gap:var(--sp-2);">
+                        ${LangyIcons.mic} ${{ en: 'Practice speaking now', ru: 'Попрактиковаться в речи', es: 'Practicar hablando ahora' }[_ll]}
+                    </div>
+                    <div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">
+                        ${{ en: `Use what you just learned with ${_tutorName}`, ru: `Примени то, что выучил, с ${_tutorName}`, es: `Usa lo que aprendiste con ${_tutorName}` }[_ll]}
+                    </div>
+                </button>
+                <button class="btn btn--ghost btn--full" id="summary-finish" style="margin-top:var(--sp-2);">
+                    ${LangyIcons.home} ${i18n('results.home')}
+                </button>`;
+                    } else {
+                        // Regular pass — Home primary, speak secondary
+                        return `
                 <button class="btn btn--${isCheckpoint && weakUnits.length > 0 ? 'ghost' : 'primary'} btn--xl btn--full" id="summary-finish" style="margin-top:var(--sp-3);">
                     ${LangyIcons.home} ${i18n('results.home')}
                 </button>
-                ${score >= LangyConfig.PASS_THRESHOLD && !isCheckpoint ? `
                 <button class="btn btn--ghost btn--full" id="summary-speak" style="margin-top:var(--sp-2); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:var(--sp-3);">
                     <div style="display:flex; align-items:center; gap:var(--sp-2);">
-                        ${LangyIcons.mic} ${{ en: 'Talk about this lesson', ru: 'Поговорить по теме урока', es: 'Hablar sobre esta lección' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}
+                        ${LangyIcons.mic} ${{ en: 'Talk about this lesson', ru: 'Поговорить по теме урока', es: 'Hablar sobre esta lección' }[_ll]}
                     </div>
                     <div style="font-size:var(--fs-xs); opacity:0.65; font-weight:var(--fw-medium);">
-                        ${{ en: `with ${typeof TalkEngine !== 'undefined' ? (TalkEngine.personas[LangyState.mascot?.selected || 0]?.name || 'your tutor') : 'your tutor'} · ~2 min`, ru: `с ${typeof TalkEngine !== 'undefined' ? (TalkEngine.personas[LangyState.mascot?.selected || 0]?.name || 'тьютором') : 'тьютором'} · ~2 мин`, es: `con ${typeof TalkEngine !== 'undefined' ? (TalkEngine.personas[LangyState.mascot?.selected || 0]?.name || 'tu tutor') : 'tu tutor'} · ~2 min` }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}
+                        ${{ en: `with ${_tutorName} · ~2 min`, ru: `с ${_tutorName} · ~2 мин`, es: `con ${_tutorName} · ~2 min` }[_ll]}
                     </div>
-                </button>` : ''}
-                ${score < LangyConfig.PASS_THRESHOLD ? `<button class="btn btn--ghost btn--full" id="summary-retry" style="margin-top:var(--sp-2); display:flex; align-items:center; justify-content:center; gap:var(--sp-2);">${LangyIcons.refresh} ${typeof MascotPersona !== 'undefined' ? MascotPersona.tone('retry') : i18n('learn.try_again')}</button>` : ''}
+                </button>`;
+                    }
+                })()}
             </div>
         `;
 
@@ -939,7 +983,13 @@ function renderLearning(container) {
             ScreenState.set('talkMascot', mascotId);
             ScreenState.set('talkView', 'call'); // skip scenario selection
             ScreenState.set('lessonContext', lessonContextStr);
-            ScreenState.remove('firstTalkSession');
+            ScreenState.set('guidedSpeaking', true);
+            // For beginner first-timers, set firstTalkSession for tip banner
+            if (!LangyState.user.firstSessionCompleted) {
+                ScreenState.set('firstTalkSession', true);
+            } else {
+                ScreenState.remove('firstTalkSession');
+            }
             ScreenState.remove('coachFocus');
             ScreenState.remove('coachFocusTag');
             ScreenState.remove('coachLoopActive');
@@ -1252,6 +1302,11 @@ function renderLearning(container) {
         };
 
         LangyState.progress.lessonHistory.push(historyEntry);
+
+        // Mark first lesson as completed (for beginner flow)
+        if (!LangyState.user.firstLessonCompleted) {
+            LangyState.user.firstLessonCompleted = true;
+        }
 
         // Save mastery record
         const masteryKey = activeTb.id + ':' + unit.id;

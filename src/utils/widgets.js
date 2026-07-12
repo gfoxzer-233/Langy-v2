@@ -79,16 +79,25 @@ const LangyWidgets = {
 
     // ─── FILL BUBBLE: Заполнить пропуск выбором из bubble-кнопок ───
     renderFillBubble(container, data, onComplete) {
+        const sentence = typeof data.sentence === 'string'
+            ? data.sentence
+            : data.prompt || data.question || 'Choose the correct answer';
+        const options = Array.isArray(data.options) ? data.options : [];
+        const hasBlank = sentence.includes('___');
+        const sentenceHtml = hasBlank
+            ? this._escapeHTML(sentence).replace(/___/g, '<span class="widget__blank">___</span>')
+            : this._escapeHTML(sentence);
+
         const el = document.createElement('div');
         el.className = 'widget widget--fill-bubble animate-in';
         el.innerHTML = `
             <div class="widget__label">${data.instruction || i18n('widget.choose_answer')}</div>
-            <div class="widget__sentence">${data.sentence.replace('___', '<span class="widget__blank">___</span>')}</div>
+            <div class="widget__sentence">${sentenceHtml}</div>
             <div class="widget__bubbles">
-                ${data.options
+                ${options
                     .map(
                         (opt, i) => `
-                    <button class="bubble-btn" data-idx="${i}">${opt}</button>
+                    <button class="bubble-btn" data-idx="${i}">${this._escapeHTML(opt)}</button>
                 `
                     )
                     .join('')}
@@ -98,25 +107,29 @@ const LangyWidgets = {
 
         el.querySelectorAll('.bubble-btn').forEach(btn => {
             btn.onclick = () => {
-                el.querySelectorAll('.bubble-btn').forEach(b => b.classList.remove('is-selected'));
+                el.querySelectorAll('.bubble-btn').forEach(b => {
+                    b.classList.remove('is-selected');
+                    b.disabled = true;
+                });
                 btn.classList.add('is-selected');
                 const isCorrect = parseInt(btn.dataset.idx) === data.correct;
 
                 // Show answer in blank
                 const blank = el.querySelector('.widget__blank');
-                if (blank) blank.textContent = data.options[parseInt(btn.dataset.idx)];
+                if (blank) blank.textContent = options[parseInt(btn.dataset.idx)];
 
                 if (isCorrect) {
                     btn.classList.add('bubble-btn--correct');
-                    blank.classList.add('widget__blank--correct');
+                    if (blank) blank.classList.add('widget__blank--correct');
                 } else {
                     btn.classList.add('bubble-btn--wrong');
-                    blank.classList.add('widget__blank--wrong');
+                    if (blank) blank.classList.add('widget__blank--wrong');
                     // Show correct
-                    el.querySelectorAll('.bubble-btn')[data.correct].classList.add('bubble-btn--correct');
+                    const correctBtn = el.querySelectorAll('.bubble-btn')[data.correct];
+                    if (correctBtn) correctBtn.classList.add('bubble-btn--correct');
                 }
 
-                this._showFeedback(el, isCorrect, data.options[data.correct], data.rule);
+                this._showFeedback(el, isCorrect, options[data.correct], data.rule);
                 setTimeout(() => onComplete(isCorrect), 1200);
             };
         });
@@ -231,14 +244,26 @@ const LangyWidgets = {
         let utterance = null;
 
         function speak(rate = 1) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                utterance = new SpeechSynthesisUtterance(data.text);
-                utterance.lang = typeof LangyTarget !== 'undefined' ? LangyTarget.ttsLang : 'en-US';
-                utterance.rate = rate;
-                window.speechSynthesis.speak(utterance);
-                playBtn.classList.add('listen-btn--playing');
-                utterance.onend = () => playBtn.classList.remove('listen-btn--playing');
+            try {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    utterance = new SpeechSynthesisUtterance(data.text);
+                    utterance.lang = typeof LangyTarget !== 'undefined' ? LangyTarget.ttsLang : 'en-US';
+                    utterance.rate = rate;
+                    window.speechSynthesis.speak(utterance);
+                    playBtn.classList.add('listen-btn--playing');
+                    utterance.onend = () => playBtn.classList.remove('listen-btn--playing');
+                    utterance.onerror = () => playBtn.classList.remove('listen-btn--playing');
+                } else {
+                    const hintEl = el.querySelector('#lt-hint');
+                    if (hintEl) {
+                        hintEl.style.display = 'flex';
+                        el.querySelector('#lt-hint-text').textContent = 'Audio is unavailable in this browser. Type the phrase if you know it, or use the hint.';
+                    }
+                }
+            } catch (err) {
+                console.warn('Listen TTS failed:', err);
+                playBtn.classList.remove('listen-btn--playing');
             }
         }
 
@@ -353,11 +378,18 @@ const LangyWidgets = {
 
         // Listen to correct pronunciation
         listenBtn.onclick = () => {
-            if ('speechSynthesis' in window) {
+            try {
+                if (!('speechSynthesis' in window)) {
+                    status.textContent = 'Audio is unavailable in this browser.';
+                    return;
+                }
                 const utt = new SpeechSynthesisUtterance(data.phrase);
                 utt.lang = typeof LangyTarget !== 'undefined' ? LangyTarget.ttsLang : 'en-US';
                 utt.rate = 0.85;
                 window.speechSynthesis.speak(utt);
+            } catch (err) {
+                console.warn('Speak-aloud TTS failed:', err);
+                status.textContent = 'Audio is temporarily unavailable. You can still record or skip.';
             }
         };
 
@@ -409,7 +441,13 @@ const LangyWidgets = {
                 recordBtn.classList.remove('speak-record-btn--active');
             };
 
-            recognition.start();
+            try {
+                recognition.start();
+            } catch (err) {
+                console.warn('Speech recognition start failed:', err);
+                status.textContent = i18n('widget.recognition_failed');
+                recordBtn.classList.remove('speak-record-btn--active');
+            }
         };
 
         // Skip button (for browsers without speech rec or user choice)
@@ -563,6 +601,39 @@ const LangyWidgets = {
     },
 
     // ─── RENDER BY TYPE ─────────────────────────────
+    _escapeHTML(value) {
+        if (typeof escapeHTML === 'function') return escapeHTML(String(value ?? ''));
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
+
+    _renderExerciseError(container, type, data, onComplete, err) {
+        console.error('Exercise render failed:', type, err);
+        container.innerHTML = `
+            <div class="widget widget--error animate-in" style="padding:var(--sp-4); border:1px solid var(--danger); border-radius:var(--radius-lg); background:var(--danger-bg);">
+                <div class="widget__label" style="color:var(--danger); display:flex; align-items:center; gap:var(--sp-2);">
+                    ${typeof LangyIcons !== 'undefined' ? LangyIcons.alertTriangle : '!'} Exercise unavailable
+                </div>
+                <div class="text-secondary text-sm" style="margin:var(--sp-2) 0 var(--sp-3);">
+                    This exercise could not be loaded. Your lesson is safe; try again or continue.
+                </div>
+                <div style="display:flex; gap:var(--sp-2); flex-wrap:wrap;">
+                    <button class="btn btn--secondary" id="widget-retry">Try again</button>
+                    <button class="btn btn--primary" id="widget-continue">Continue</button>
+                </div>
+            </div>
+        `;
+        container.querySelector('#widget-retry')?.addEventListener('click', () => {
+            container.innerHTML = '';
+            this.render(container, type, data, onComplete);
+        });
+        container.querySelector('#widget-continue')?.addEventListener('click', () => onComplete(false));
+    },
+
     render(container, type, data, onComplete) {
         const renderers = {
             'word-shuffle': this.renderWordShuffle,
@@ -576,11 +647,22 @@ const LangyWidgets = {
         };
 
         const renderer = renderers[type];
-        if (renderer) {
-            renderer.call(this, container, data, onComplete);
-        } else {
-            console.warn('Unknown widget type:', type);
-            onComplete(true);
+        const safeComplete = result => {
+            try {
+                onComplete(result);
+            } catch (err) {
+                console.error('Exercise completion failed:', err);
+            }
+        };
+
+        try {
+            if (renderer) {
+                renderer.call(this, container, data || {}, safeComplete);
+            } else {
+                this._renderExerciseError(container, type, data || {}, safeComplete, new Error(`Unknown widget type: ${type}`));
+            }
+        } catch (err) {
+            this._renderExerciseError(container, type, data || {}, safeComplete, err);
         }
     },
 };

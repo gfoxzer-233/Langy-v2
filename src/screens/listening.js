@@ -209,17 +209,22 @@ function renderListeningDrill(container, modeId, lang) {
 }
 
 function speakText(text, rate) {
-    if (typeof LangyVoice !== 'undefined') {
-        if (rate && rate < 0.8) {
-            LangyVoice.saySlow(text);
-        } else {
-            LangyVoice.sayTeacher(text);
+    try {
+        if (typeof LangyVoice !== 'undefined') {
+            if (rate && rate < 0.8) {
+                LangyVoice.saySlow(text);
+            } else {
+                LangyVoice.sayTeacher(text);
+            }
+        } else if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = typeof LangyTarget !== 'undefined' ? LangyTarget.ttsLang : 'en-US';
+            u.rate = rate || 1;
+            window.speechSynthesis.speak(u);
         }
-    } else if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = typeof LangyTarget !== 'undefined' ? LangyTarget.ttsLang : 'en-US'; u.rate = rate || 1;
-        window.speechSynthesis.speak(u);
+    } catch (err) {
+        console.warn('Listening TTS unavailable:', err);
     }
 }
 
