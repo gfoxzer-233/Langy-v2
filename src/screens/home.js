@@ -146,33 +146,90 @@ function renderHomeLessonCard(meta) {
 
 function renderHomeTalkCard(meta, recommendedScenario) {
     const mascotName = getHomeMascotName();
+    const talkLabel = formatHomeText('home.talk_with', { mascot: mascotName });
+
+    return `
+        <section class="home-learning-card home-learning-card--talk" id="home-talk-card" aria-labelledby="home-talk-title" data-recommended-scenario="${escapeHTML(recommendedScenario || 'coffee')}">
+            <div class="home-learning-card__header">
+                <span class="home-learning-card__eyebrow">${i18n('home.talk_desc')}</span>
+                <span class="home-learning-card__state">${i18n('home.secondary_cta')}</span>
+            </div>
+            <h3 class="home-learning-card__title home-learning-card__title--sm" id="home-talk-title">${escapeHTML(meta?.unit?.title || i18n('home.talk_default_topic'))}</h3>
+            <button type="button" class="home-talk-entry" id="home-talk-open" aria-haspopup="dialog" aria-controls="home-talk-modal">
+                <span class="home-talk-entry__main">
+                    <span class="home-talk-entry__icon">${LangyIcons.messageCircle}</span>
+                    <span>${escapeHTML(talkLabel)}</span>
+                </span>
+                <span class="home-talk-entry__arrow" aria-hidden="true">${LangyIcons.arrow}</span>
+            </button>
+        </section>
+    `;
+}
+
+function getHomeTalkOptions() {
     const hasMistakes = (LangyState.coachData?.mistakePatterns || []).length > 0;
     const hasTalkDraft = !!ScreenState.get('talkView') && ScreenState.get('talkView') !== 'summary';
-    const options = [
+    return [
         { mode: 'free', label: i18n('home.talk_free'), icon: LangyIcons.messageCircle },
         { mode: 'lesson', label: i18n('home.talk_lesson'), icon: LangyIcons.bookOpen },
         { mode: 'mistakes', label: i18n('home.talk_mistakes'), icon: LangyIcons.target, disabled: !hasMistakes },
         { mode: 'scenario', label: i18n('home.talk_scenario'), icon: LangyIcons.map },
         { mode: 'resume', label: i18n('home.talk_resume'), icon: LangyIcons.play, disabled: !hasTalkDraft },
     ];
+}
 
-    return `
-        <section class="home-learning-card home-learning-card--talk" id="home-talk-card" aria-labelledby="home-talk-title">
-            <div class="home-learning-card__header">
-                <span class="home-learning-card__eyebrow">${formatHomeText('home.talk_with', { mascot: mascotName })}</span>
-                <span class="home-learning-card__state">${i18n('home.secondary_cta')}</span>
+function openHomeTalkModal(recommendedScenario, launchTalkFromHome) {
+    document.querySelector('#home-talk-modal')?.remove();
+
+    const mascotName = getHomeMascotName();
+    const talkLabel = formatHomeText('home.talk_with', { mascot: mascotName });
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay home-talk-modal';
+    overlay.id = 'home-talk-modal';
+    overlay.innerHTML = `
+        <div class="overlay__sheet home-talk-modal__sheet" role="dialog" aria-modal="true" aria-labelledby="home-talk-modal-title">
+            <div class="overlay__handle"></div>
+            <div class="home-talk-modal__header">
+                <div>
+                    <span class="home-learning-card__eyebrow">${i18n('home.secondary_cta')}</span>
+                    <h3 class="home-talk-modal__title" id="home-talk-modal-title">${escapeHTML(talkLabel)}</h3>
+                    <p class="home-talk-modal__subtitle">${i18n('home.talk_subtitle')}</p>
+                </div>
+                <button type="button" class="home-talk-modal__close" id="home-talk-close" aria-label="${i18n('general.close')}">
+                    ${LangyIcons.x}
+                </button>
             </div>
-            <h3 class="home-learning-card__title home-learning-card__title--sm" id="home-talk-title">${escapeHTML(meta?.unit?.title || i18n('home.talk_default_topic'))}</h3>
-            <p class="home-learning-card__goal">${i18n('home.talk_subtitle')}</p>
-            <div class="home-talk-options" data-recommended-scenario="${recommendedScenario || 'coffee'}">
-                ${options.map(option => `
+            <div class="home-talk-options" data-recommended-scenario="${escapeHTML(recommendedScenario || 'coffee')}">
+                ${getHomeTalkOptions().map(option => `
                     <button type="button" class="home-talk-option ${option.disabled ? 'home-talk-option--disabled' : ''}" data-talk-mode="${option.mode}" ${option.disabled ? 'disabled' : ''}>
-                        ${option.icon} <span>${option.label}</span>
+                        <span class="home-talk-option__icon">${option.icon}</span>
+                        <span>${option.label}</span>
                     </button>
                 `).join('')}
             </div>
-        </section>
+        </div>
     `;
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', e => {
+        if (e.target === overlay) close();
+    });
+    overlay.addEventListener('keydown', e => {
+        if (e.key === 'Escape') close();
+    });
+    overlay.querySelector('#home-talk-close')?.addEventListener('click', close);
+    overlay.querySelectorAll('.home-talk-option').forEach(button => {
+        button.addEventListener('click', e => {
+            Anim.ripple(e);
+            const scenarioFromModal = overlay.querySelector('.home-talk-options')?.dataset.recommendedScenario || recommendedScenario || 'coffee';
+            const mode = button.dataset.talkMode;
+            close();
+            launchTalkFromHome(mode, scenarioFromModal);
+        });
+    });
+
+    document.body.appendChild(overlay);
+    overlay.querySelector('.home-talk-option:not([disabled])')?.focus();
 }
 
 function renderHomeCourseCard(meta) {
@@ -536,9 +593,9 @@ function renderHome(container) {
         'home-course-map': 'progress',
     };
 
-    const launchTalkFromHome = mode => {
-        const talkOptions = container.querySelector('.home-talk-options');
-        const scenarioFromCard = talkOptions?.dataset.recommendedScenario || recommendedScenario || 'coffee';
+    const launchTalkFromHome = (mode, scenarioOverride) => {
+        const talkCard = container.querySelector('#home-talk-card');
+        const scenarioFromCard = scenarioOverride || talkCard?.dataset.recommendedScenario || recommendedScenario || 'coffee';
         const scenarioByMode = {
             free: 'free',
             lesson: scenarioFromCard,
@@ -578,11 +635,10 @@ function renderHome(container) {
         setTimeout(() => Router.navigate('learning'), 500);
     });
 
-    container.querySelectorAll('.home-talk-option').forEach(button => {
-        button.addEventListener('click', e => {
-            Anim.ripple(e);
-            launchTalkFromHome(button.dataset.talkMode);
-        });
+    container.querySelector('#home-talk-open')?.addEventListener('click', e => {
+        Anim.ripple(e);
+        const scenarioFromCard = container.querySelector('#home-talk-card')?.dataset.recommendedScenario || recommendedScenario || 'coffee';
+        openHomeTalkModal(scenarioFromCard, launchTalkFromHome);
     });
     Object.entries(navMap).forEach(([id, route]) => {
         const el = container.querySelector(`#${id}`);

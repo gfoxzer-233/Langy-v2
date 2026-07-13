@@ -93,6 +93,8 @@ describe('Home information architecture', () => {
         expect(container.querySelector('#home-lesson-card').textContent).toContain('8 exercises');
         expect(container.querySelector('#home-lesson-card').textContent).toContain('about 14 min');
         expect(container.querySelector('#home-talk-card').textContent).toContain('Talk with');
+        expect(container.querySelector('#home-talk-open')).toBeInstanceOf(HTMLButtonElement);
+        expect(container.querySelectorAll('.home-talk-option')).toHaveLength(0);
         expect(container.querySelector('#home-course-card').textContent).toContain('Structured');
         expect(container.textContent).not.toContain('Ready to practice');
         expect(container.textContent).not.toContain('Lesson done');
@@ -114,6 +116,36 @@ describe('Home information architecture', () => {
 
         expect(container.querySelector('#nav-learning').textContent).toContain('Continue lesson');
         expect(container.querySelector('#home-lesson-card').textContent).toContain('In progress: 1/8');
+    });
+
+    it('opens Talk mode choices from a single mascot button on Home', () => {
+        const container = document.getElementById('screen-container');
+        const navSpy = vi.spyOn(Router, 'navigate').mockImplementation(() => {});
+        LangyState.mascot.selected = 3;
+
+        renderHome(container);
+
+        const talkButton = container.querySelector('#home-talk-open');
+        expect(talkButton).toBeInstanceOf(HTMLButtonElement);
+        expect(talkButton.textContent).toContain('Talk with Omar');
+        expect(container.querySelector('#home-talk-card').textContent).not.toContain('Free talk');
+        expect(container.querySelector('#home-talk-card').textContent).not.toContain('Lesson topic');
+
+        click(talkButton);
+
+        const modal = document.querySelector('#home-talk-modal');
+        expect(modal).toBeTruthy();
+        expect(modal.querySelectorAll('.home-talk-option')).toHaveLength(5);
+        expect(modal.textContent).toContain('Free talk');
+
+        click(modal.querySelector('[data-talk-mode="free"]'));
+
+        expect(document.querySelector('#home-talk-modal')).toBeNull();
+        expect(ScreenState.get('talkMascot')).toBe(3);
+        expect(ScreenState.get('talkScenario')).toBe('free');
+        expect(ScreenState.get('guidedSpeaking')).toBe(false);
+        expect(ScreenState.get('talkView')).toBe('call');
+        expect(navSpy).toHaveBeenCalledWith('talk');
     });
 
     it('keeps Homework as a single Home entry and shows pending count as a badge', () => {
