@@ -1,18 +1,19 @@
 /* ============================================
-   SCREEN: ONBOARDING — Language-Specific First Session Setup
-   Flow: Language → Goal (language-specific) → Confidence → Start
-   Each language has distinct goals, framing, and path promises.
+   SCREEN: ONBOARDING — New Learner First Experience
+   Flow: App Language → Learning Language → Goal → Teacher → Level → Ready
+   Lesson-first for beginners, speaking-first for intermediates.
    ============================================ */
 
 function renderOnboarding(container) {
     const rawStep = ScreenState.get('onboardingStep', 1);
-    const step = Math.min(Math.max(rawStep, 1), 4);
+    const TOTAL_STEPS = 6;
+    const VISIBLE_STEPS = 5; // App-language step is pre-flow, not counted
+    const step = Math.min(Math.max(rawStep, 1), TOTAL_STEPS);
     const lang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
-    const TOTAL_STEPS = 4; // 1=language, 2=goal, 3=confidence, 4=start
 
     if (rawStep !== step) ScreenState.set('onboardingStep', step);
 
-    // ─── Shared option-step renderer ───
+    // ─── Shared pill-step renderer ───
     function renderPillStep(config) {
         const selected = ScreenState.get(config.stateKey, null);
 
@@ -41,11 +42,11 @@ function renderOnboarding(container) {
                                     color:var(--text-primary);
                                 ">
                             <span style="font-size:24px; flex-shrink:0; width:32px; text-align:center;">${opt.icon}</span>
-                            <div>
+                            <div style="flex:1;">
                                 <div style="font-weight:var(--fw-bold);">${opt.label}</div>
                                 ${opt.desc ? `<div style="font-size:var(--fs-sm); color:var(--text-secondary); margin-top:2px;">${opt.desc}</div>` : ''}
                             </div>
-                            ${selected === opt.id ? `<span style="margin-left:auto; color:var(--primary);">${LangyIcons.check}</span>` : ''}
+                            ${selected === opt.id ? `<span style="margin-left:auto; color:var(--primary); flex-shrink:0;">${LangyIcons.check}</span>` : ''}
                         </button>
                     `
                         )
@@ -55,13 +56,12 @@ function renderOnboarding(container) {
                 <div class="onboarding__bottom">
                     <button class="btn btn--primary btn--lg btn--full onboarding__btn ${!selected ? 'btn--disabled' : ''}"
                             id="onboarding-next" ${!selected ? 'disabled' : ''}>
-                        ${config.nextLabel || `${i18n('learn.next')} ${LangyIcons.arrowRight}`}
+                        ${config.nextLabel || ({ en: 'Continue', ru: 'Продолжить', es: 'Continuar' }[lang] + ' ' + LangyIcons.arrowRight)}
                     </button>
                 </div>
             </div>
         `;
 
-        // Pill click handlers
         container.querySelectorAll('.onboarding__pill').forEach(pill => {
             pill.addEventListener('click', () => {
                 ScreenState.set(config.stateKey, pill.dataset.id);
@@ -69,7 +69,6 @@ function renderOnboarding(container) {
             });
         });
 
-        // Next button
         container.querySelector('#onboarding-next').addEventListener('click', () => {
             if (config.onNext) config.onNext(selected);
             ScreenState.set('onboardingStep', config.nextStep);
@@ -80,66 +79,124 @@ function renderOnboarding(container) {
     }
 
     // ═══════════════════════════════════════════
-    // STEP 1: CHOOSE YOUR LANGUAGE (Hero step)
+    // STEP 1: APP LANGUAGE
+    // No step badge — this is the entry gate, not part of the learning flow
     // ═══════════════════════════════════════════
     if (step === 1) {
+        const selectedAppLang = ScreenState.get('appLangChoice', null);
+
+        const appLangOptions = [
+            { id: 'en', flag: '🇬🇧', label: 'English' },
+            { id: 'ru', flag: '🇷🇺', label: 'Русский' },
+            { id: 'es', flag: '🇪🇸', label: 'Español' },
+        ];
+
+        container.innerHTML = `
+            <div class="screen onboarding">
+                <div class="onboarding__header" style="padding-top:var(--sp-8); text-align:center;">
+                    <img src="assets/logo.png" alt="Langy"
+                         style="width:64px; height:auto; margin:0 auto var(--sp-5); display:block;"
+                         onerror="this.style.display='none'">
+                    <h2 class="onboarding__title" style="font-size: var(--fs-2xl);">
+                        Choose your language
+                    </h2>
+                    <p class="onboarding__desc" style="color:var(--text-secondary);">
+                        Выберите язык · Elige tu idioma
+                    </p>
+                </div>
+
+                <div class="onboarding__pills" style="display:flex; flex-direction:column; gap:var(--sp-3); padding:var(--sp-4) var(--sp-2) 0;">
+                    ${appLangOptions.map(opt => `
+                        <button class="onboarding__pill ${selectedAppLang === opt.id ? 'onboarding__pill--selected' : ''}"
+                                data-lang="${opt.id}"
+                                style="
+                                    display:flex; align-items:center; gap:var(--sp-4);
+                                    padding:var(--sp-4) var(--sp-5); border-radius:var(--radius-lg);
+                                    border:2px solid ${selectedAppLang === opt.id ? 'var(--primary)' : 'var(--border)'};
+                                    background:${selectedAppLang === opt.id ? 'var(--primary-bg)' : 'var(--bg-card)'};
+                                    cursor:pointer; text-align:left; width:100%;
+                                    transition: all 0.2s ease;
+                                    font-family:inherit; font-size:var(--fs-lg);
+                                    color:var(--text-primary);
+                                ">
+                            <span style="font-size:32px; flex-shrink:0;">${opt.flag}</span>
+                            <span style="font-weight:var(--fw-bold);">${opt.label}</span>
+                            ${selectedAppLang === opt.id ? `<span style="margin-left:auto; color:var(--primary);">${LangyIcons.check}</span>` : ''}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <div class="onboarding__bottom">
+                    <button class="btn btn--primary btn--lg btn--full onboarding__btn ${!selectedAppLang ? 'btn--disabled' : ''}"
+                            id="onboarding-next" ${!selectedAppLang ? 'disabled' : ''}>
+                        ${{ en: 'Continue', ru: 'Продолжить', es: 'Continuar' }[selectedAppLang || 'en']} ${LangyIcons.arrowRight}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        container.querySelectorAll('.onboarding__pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                ScreenState.set('appLangChoice', pill.dataset.lang);
+                renderOnboarding(container);
+            });
+        });
+
+        container.querySelector('#onboarding-next').addEventListener('click', () => {
+            const chosen = ScreenState.get('appLangChoice', 'en');
+            if (typeof LangyI18n !== 'undefined') {
+                LangyI18n.setLang(chosen);
+            }
+            ScreenState.set('onboardingStep', 2);
+            renderOnboarding(container);
+        });
+
+        setTimeout(() => Anim.staggerChildren(container, '.onboarding__pill'), 50);
+        return;
+    }
+
+    // ═══════════════════════════════════════════
+    // STEP 2: LEARNING LANGUAGE
+    // Clean cards: flag + localized name + warm subtitle. No jargon.
+    // ═══════════════════════════════════════════
+    if (step === 2) {
         const selectedLang = ScreenState.get('targetLangChoice', null);
         const languages = typeof LangyTarget !== 'undefined' ? LangyTarget.LANGUAGES : {};
 
-        // Build language cards with rich info
+        const langNames = {
+            en: { en: 'English', es: 'Spanish', ar: 'Arabic' },
+            ru: { en: 'Английский', es: 'Испанский', ar: 'Арабский' },
+            es: { en: 'Inglés', es: 'Español', ar: 'Árabe' },
+        };
+
+        // Warm, beginner-friendly subtitles — no CEFR, no technical jargon
+        const langSubtitles = {
+            en: { en: 'Structured lessons with AI tutoring', es: 'Conversation-first with cultural context', ar: 'Learn the script, then speak with confidence' },
+            ru: { en: 'Структурированные уроки с ИИ-репетитором', es: 'Разговорный с культурным контекстом', ar: 'Сначала письмо, потом уверенная речь' },
+            es: { en: 'Lecciones estructuradas con tutoría IA', es: 'Conversación con contexto cultural', ar: 'Aprende la escritura, luego habla con confianza' },
+        };
+
         const langCards = Object.entries(languages).map(([code, cfg]) => {
             const isSelected = selectedLang === code;
-            const backbone = cfg.academicBackbone || {};
-            const isFeatured = cfg.featured === true;
-            const subtitleMap = {
-                en: {
-                    en: 'CEFR-aligned academic English',
-                    ru: 'Академический английский по CEFR',
-                    es: 'Inglés académico alineado con MCER',
-                },
-                es: {
-                    en: 'Cervantes Institute Spanish',
-                    ru: 'Испанский по Институту Сервантеса',
-                    es: 'Español del Instituto Cervantes',
-                },
-                ar: {
-                    en: 'Modern Standard Arabic',
-                    ru: 'Современный стандартный арабский',
-                    es: 'Árabe estándar moderno',
-                },
-            };
-            const subtitle = (subtitleMap[code] || {})[lang] || backbone.reference || '';
-            const levelStr = cfg.cefrLevels ? `${cfg.cefrLevels[0]}–${cfg.cefrLevels[cfg.cefrLevels.length - 1]}` : '';
-
-            // Featured accent color (warm amber for Arabic wedge)
-            const featuredColor = '#D97706';
-            const borderColor = isSelected ? 'var(--primary)' : isFeatured ? featuredColor + '44' : 'var(--border)';
-            const bgColor = isSelected ? 'var(--primary-bg)' : isFeatured ? featuredColor + '06' : 'var(--bg-card)';
-            const tagline = cfg.tagline ? (cfg.tagline[lang] || cfg.tagline.en) : '';
+            const primaryName = (langNames[lang] || langNames.en)[code] || cfg.nativeName;
+            const nativeName = cfg.nativeName || '';
+            const showSecondary = nativeName && nativeName !== primaryName;
+            const subtitle = (langSubtitles[lang] || langSubtitles.en)[code] || '';
 
             return `
                 <button class="onboarding__lang-card ${isSelected ? 'onboarding__lang-card--selected' : ''}"
                         data-lang="${code}"
-                        id="lang-card-${code}"
                         style="
                             display:flex; align-items:center; gap:var(--sp-4);
                             padding:var(--sp-5) var(--sp-4); border-radius:var(--radius-xl, 20px);
-                            border:2.5px solid ${borderColor};
-                            background:${bgColor};
+                            border:2.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'};
+                            background:${isSelected ? 'var(--primary-bg)' : 'var(--bg-card)'};
                             cursor:pointer; text-align:left; width:100%;
                             transition: all 0.25s ease;
                             font-family:inherit; font-size:var(--fs-base);
                             color:var(--text-primary);
                             ${isSelected ? 'box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 99,102,241), 0.15);' : ''}
-                            position:relative;
                         ">
-                    ${isFeatured ? `<span style="
-                        position:absolute; top:-9px; right:16px;
-                        background:${featuredColor}; color:#fff;
-                        font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase;
-                        padding:2px 10px; border-radius:6px;
-                        line-height:16px;
-                    ">${{ en: 'Featured', ru: 'Рекомендуем', es: 'Destacado' }[lang]}</span>` : ''}
                     <span style="
                         font-size:40px; flex-shrink:0; width:52px; height:52px;
                         display:flex; align-items:center; justify-content:center;
@@ -147,18 +204,14 @@ function renderOnboarding(container) {
                     ">${cfg.flag}</span>
                     <div style="flex:1; min-width:0;">
                         <div style="font-weight:var(--fw-bold); font-size:var(--fs-lg);">
-                            ${cfg.nativeName}
-                            <span style="font-weight:400; color:var(--text-secondary); font-size:var(--fs-sm);"> · ${(cfg.name || {})[lang] || cfg.nativeName}</span>
+                            ${primaryName}
+                            ${showSecondary ? `<span style="font-weight:400; color:var(--text-secondary); font-size:var(--fs-sm);"> · ${nativeName}</span>` : ''}
                         </div>
                         <div style="font-size:var(--fs-sm); color:var(--text-secondary); margin-top:3px;">
                             ${subtitle}
                         </div>
-                        ${tagline ? `<div style="font-size:var(--fs-xs, 11px); color:${featuredColor}; margin-top:4px; font-weight:var(--fw-semibold, 600);">${tagline}</div>` : ''}
-                        <div style="font-size:var(--fs-xs, 11px); color:var(--text-tertiary, var(--text-secondary)); margin-top:4px; opacity:0.7;">
-                            CEFR ${levelStr}${cfg.direction === 'rtl' ? ' · RTL' : ''}
-                        </div>
                     </div>
-                    ${isSelected ? `<span style="margin-left:auto; color:var(--primary); flex-shrink:0;">${LangyIcons.check}</span>` : ''}
+                    ${isSelected ? `<span style="color:var(--primary); flex-shrink:0;">${LangyIcons.check}</span>` : ''}
                 </button>
             `;
         });
@@ -166,12 +219,12 @@ function renderOnboarding(container) {
         container.innerHTML = `
             <div class="screen onboarding">
                 <div class="onboarding__header" style="padding-bottom:var(--sp-2);">
-                    <div class="onboarding__step-badge">1 / ${TOTAL_STEPS}</div>
+                    <div class="onboarding__step-badge">${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 1 / ${VISIBLE_STEPS}</div>
                     <h2 class="onboarding__title" style="font-size: var(--fs-2xl);">
-                        ${{ en: 'What will you learn?', ru: 'Какой язык учим?', es: '¿Qué idioma aprenderás?' }[lang]}
+                        ${{ en: 'What do you want to learn?', ru: 'Что хочешь выучить?', es: '¿Qué quieres aprender?' }[lang]}
                     </h2>
                     <p class="onboarding__desc" style="max-width:340px; margin:var(--sp-1) auto 0;">
-                        ${{ en: 'Each language has its own curriculum, exercises, and AI tutor', ru: 'У каждого языка — свой учебный план, упражнения и ИИ-репетитор', es: 'Cada idioma tiene su propio plan, ejercicios y tutor IA' }[lang]}
+                        ${{ en: 'Pick a language — you can always add more later', ru: 'Выбери язык — потом можно добавить ещё', es: 'Elige un idioma — siempre puedes añadir más' }[lang]}
                     </p>
                 </div>
 
@@ -188,7 +241,6 @@ function renderOnboarding(container) {
             </div>
         `;
 
-        // Language card click handlers
         container.querySelectorAll('.onboarding__lang-card').forEach(card => {
             card.addEventListener('click', () => {
                 ScreenState.set('targetLangChoice', card.dataset.lang);
@@ -196,22 +248,12 @@ function renderOnboarding(container) {
             });
         });
 
-        // Next button
         container.querySelector('#onboarding-next').addEventListener('click', () => {
             const code = ScreenState.get('targetLangChoice', 'en');
-
-            // Set the target language in the system
-            if (typeof LangyTarget !== 'undefined') {
-                LangyTarget.set(code);
-            }
-            if (typeof LangyState !== 'undefined') {
-                LangyState.targetLanguage = code;
-            }
-            if (typeof LangyCurriculum !== 'undefined') {
-                LangyCurriculum.targetLanguage = code;
-            }
-
-            ScreenState.set('onboardingStep', 2);
+            if (typeof LangyTarget !== 'undefined') LangyTarget.set(code);
+            if (typeof LangyState !== 'undefined') LangyState.targetLanguage = code;
+            if (typeof LangyCurriculum !== 'undefined') LangyCurriculum.targetLanguage = code;
+            ScreenState.set('onboardingStep', 3);
             renderOnboarding(container);
         });
 
@@ -220,121 +262,78 @@ function renderOnboarding(container) {
     }
 
     // ═══════════════════════════════════════════
-    // STEP 2: What's your goal?
+    // STEP 3: YOUR GOAL
+    // Language-specific, beginner-friendly motivations.
     // ═══════════════════════════════════════════
-    if (step === 2) {
-        // Get selected language name for contextual copy
+    if (step === 3) {
         const targetCode = ScreenState.get('targetLangChoice', 'en');
         const targetCfg = typeof LangyTarget !== 'undefined' ? (LangyTarget.LANGUAGES[targetCode] || {}) : {};
-        const targetName = (targetCfg.name || {})[lang] || targetCfg.nativeName || 'this language';
 
-        // ─── Language-specific goal trees ───
+        const langNames = {
+            en: { en: 'English', es: 'Spanish', ar: 'Arabic' },
+            ru: { en: 'английский', es: 'испанский', ar: 'арабский' },
+            es: { en: 'inglés', es: 'español', ar: 'árabe' },
+        };
+        const targetName = (langNames[lang] || langNames.en)[targetCode] || targetCfg.nativeName || 'this language';
+
         const goalsByLang = {
             ar: [
-                {
-                    id: 'alphabet',
-                    icon: '✍️',
-                    label: { en: 'Read & write Arabic from zero', ru: 'Читать и писать по-арабски с нуля', es: 'Leer y escribir árabe desde cero' }[lang],
-                    desc: { en: 'Start with the script — letters, vowels, then your first words', ru: 'Начни с письма — буквы, гласные, затем первые слова', es: 'Empieza por la escritura — letras, vocales, luego tus primeras palabras' }[lang],
-                },
-                {
-                    id: 'heritage',
-                    icon: '🏠',
+                { id: 'alphabet', icon: '✍️',
+                    label: { en: 'Learn the Arabic script', ru: 'Выучить арабское письмо', es: 'Aprender la escritura árabe' }[lang],
+                    desc: { en: 'Start with letters and your first words', ru: 'Начать с букв и первых слов', es: 'Empezar con letras y tus primeras palabras' }[lang] },
+                { id: 'heritage', icon: '🏠',
                     label: { en: 'Reconnect with my roots', ru: 'Восстановить связь с корнями', es: 'Reconectar con mis raíces' }[lang],
-                    desc: { en: 'Understand family conversations, culture, and identity', ru: 'Понимать семейные разговоры, культуру и самоидентификацию', es: 'Entender conversaciones familiares, cultura e identidad' }[lang],
-                },
-                {
-                    id: 'religion',
-                    icon: '🕌',
-                    label: { en: 'Read Quran & understand prayers', ru: 'Читать Коран и понимать молитвы', es: 'Leer el Corán y entender oraciones' }[lang],
-                    desc: { en: 'Build reading skill for religious texts and daily worship', ru: 'Навык чтения для религиозных текстов и ежедневной молитвы', es: 'Desarrollar lectura para textos religiosos y oración diaria' }[lang],
-                },
-                {
-                    id: 'speak',
-                    icon: LangyIcons.mic,
+                    desc: { en: 'Understand family conversations and culture', ru: 'Понимать семейные разговоры и культуру', es: 'Entender conversaciones familiares y cultura' }[lang] },
+                { id: 'speak', icon: '💬',
                     label: { en: 'Speak Arabic in real life', ru: 'Говорить по-арабски в жизни', es: 'Hablar árabe en la vida real' }[lang],
-                    desc: { en: 'Learn script first, then greetings, introductions, and daily phrases', ru: 'Сначала письмо, затем приветствия, представления и фразы', es: 'Primero la escritura, luego saludos, presentaciones y frases diarias' }[lang],
-                },
+                    desc: { en: 'Greetings, introductions, daily phrases', ru: 'Приветствия, представления, фразы', es: 'Saludos, presentaciones, frases diarias' }[lang] },
+                { id: 'religion', icon: '🕌',
+                    label: { en: 'Read Quran & understand prayers', ru: 'Читать Коран и понимать молитвы', es: 'Leer el Corán y entender oraciones' }[lang],
+                    desc: { en: 'Reading skill for religious texts', ru: 'Навык чтения религиозных текстов', es: 'Lectura para textos religiosos' }[lang] },
             ],
             es: [
-                {
-                    id: 'travel',
-                    icon: LangyIcons.globe,
-                    label: { en: 'Travel to Spanish-speaking countries', ru: 'Путешествовать по испаноязычным странам', es: 'Viajar a países hispanohablantes' }[lang],
-                    desc: { en: 'Order food, ask directions, meet locals', ru: 'Заказать еду, спросить дорогу, общаться', es: 'Pedir comida, preguntar direcciones, conocer gente' }[lang],
-                },
-                {
-                    id: 'speak',
-                    icon: LangyIcons.mic,
-                    label: { en: 'Speak everyday Spanish', ru: 'Говорить по-испански каждый день', es: 'Hablar español todos los días' }[lang],
-                    desc: { en: 'Conversations, confidence, real fluency', ru: 'Разговоры, уверенность, реальная беглость', es: 'Conversaciones, confianza, fluidez real' }[lang],
-                },
-                {
-                    id: 'relocate',
-                    icon: '🏡',
-                    label: { en: 'Relocate or live abroad', ru: 'Переезд или жизнь за рубежом', es: 'Mudarme o vivir en el extranjero' }[lang],
-                    desc: { en: 'Work, documents, daily life in Spanish', ru: 'Работа, документы, быт на испанском', es: 'Trabajo, documentos, vida diaria en español' }[lang],
-                },
-                {
-                    id: 'exam',
-                    icon: LangyIcons.graduationCap,
-                    label: { en: 'Pass DELE / SIELE', ru: 'Сдать DELE / SIELE', es: 'Aprobar DELE / SIELE' }[lang],
-                    desc: { en: 'Structured exam preparation', ru: 'Подготовка к экзамену', es: 'Preparación estructurada para el examen' }[lang],
-                },
+                { id: 'travel', icon: '✈️',
+                    label: { en: 'Travel & explore', ru: 'Путешествия', es: 'Viajar y explorar' }[lang],
+                    desc: { en: 'Order food, ask directions, meet locals', ru: 'Заказать еду, спросить дорогу', es: 'Pedir comida, preguntar direcciones' }[lang] },
+                { id: 'speak', icon: '💬',
+                    label: { en: 'Have real conversations', ru: 'Вести реальные разговоры', es: 'Tener conversaciones reales' }[lang],
+                    desc: { en: 'Confidence in everyday situations', ru: 'Уверенность в повседневных ситуациях', es: 'Confianza en situaciones cotidianas' }[lang] },
+                { id: 'work', icon: '💼',
+                    label: { en: 'Work & career', ru: 'Работа и карьера', es: 'Trabajo y carrera' }[lang],
+                    desc: { en: 'Professional Spanish for the workplace', ru: 'Профессиональный испанский для работы', es: 'Español profesional para el trabajo' }[lang] },
+                { id: 'fun', icon: '🎯',
+                    label: { en: 'Just for myself', ru: 'Просто для себя', es: 'Solo para mí' }[lang],
+                    desc: { en: 'Learning at my own pace, no pressure', ru: 'Учусь в своём темпе, без давления', es: 'Aprendiendo a mi ritmo, sin presión' }[lang] },
             ],
             en: [
-                {
-                    id: 'work',
-                    icon: LangyIcons.clipboard,
-                    label: { en: 'English for work & interviews', ru: 'Английский для работы и собеседований', es: 'Inglés para trabajo y entrevistas' }[lang],
-                    desc: { en: 'Meetings, emails, professional confidence', ru: 'Встречи, письма, профессиональная уверенность', es: 'Reuniones, emails, confianza profesional' }[lang],
-                },
-                {
-                    id: 'speak',
-                    icon: LangyIcons.mic,
-                    label: { en: 'Everyday fluency', ru: 'Бытовая беглость', es: 'Fluidez cotidiana' }[lang],
-                    desc: { en: 'Think and speak in English naturally', ru: 'Думать и говорить на английском свободно', es: 'Pensar y hablar en inglés de forma natural' }[lang],
-                },
-                {
-                    id: 'travel',
-                    icon: LangyIcons.globe,
-                    label: { en: 'Travel & live abroad', ru: 'Путешествия и жизнь за рубежом', es: 'Viajar y vivir en el extranjero' }[lang],
-                    desc: { en: 'Navigate airports, hotels, social life', ru: 'Аэропорты, отели, общение', es: 'Aeropuertos, hoteles, vida social' }[lang],
-                },
-                {
-                    id: 'exam',
-                    icon: LangyIcons.graduationCap,
-                    label: { en: 'Pass IELTS / TOEFL / Cambridge', ru: 'Сдать IELTS / TOEFL / Cambridge', es: 'Aprobar IELTS / TOEFL / Cambridge' }[lang],
-                    desc: { en: 'Academic English & exam strategies', ru: 'Академический английский и стратегии', es: 'Inglés académico y estrategias de examen' }[lang],
-                },
+                { id: 'work', icon: '💼',
+                    label: { en: 'Work & career', ru: 'Работа и карьера', es: 'Trabajo y carrera' }[lang],
+                    desc: { en: 'Meetings, emails, professional confidence', ru: 'Встречи, письма, уверенность', es: 'Reuniones, emails, confianza profesional' }[lang] },
+                { id: 'speak', icon: '💬',
+                    label: { en: 'Have real conversations', ru: 'Вести реальные разговоры', es: 'Tener conversaciones reales' }[lang],
+                    desc: { en: 'Think and speak naturally', ru: 'Думать и говорить свободно', es: 'Pensar y hablar de forma natural' }[lang] },
+                { id: 'travel', icon: '✈️',
+                    label: { en: 'Travel & living abroad', ru: 'Путешествия и жизнь за рубежом', es: 'Viajar y vivir en el extranjero' }[lang],
+                    desc: { en: 'Navigate airports, hotels, social life', ru: 'Аэропорты, отели, общение', es: 'Aeropuertos, hoteles, vida social' }[lang] },
+                { id: 'fun', icon: '🎯',
+                    label: { en: 'Just for myself', ru: 'Просто для себя', es: 'Solo para mí' }[lang],
+                    desc: { en: 'Learning at my own pace', ru: 'Учусь в своём темпе', es: 'Aprendiendo a mi ritmo' }[lang] },
             ],
-        };
-
-        // Language-specific subtitle for goal step
-        const goalSubtitles = {
-            ar: { en: "Your Arabic path starts with the script — we'll guide you from there", ru: 'Твой путь начнётся с письма — мы поведём тебя дальше', es: 'Tu camino comienza con la escritura — te guiaremos desde ahí' },
-            es: { en: "We'll focus your Spanish on what matters most", ru: 'Мы сфокусируем испанский на том, что важно', es: 'Enfocaremos tu español en lo que más importa' },
-            en: { en: "We'll tailor your English to this goal", ru: 'Мы настроим английский под эту цель', es: 'Ajustaremos tu inglés a este objetivo' },
         };
 
         renderPillStep({
-            stepLabel: `2 / ${TOTAL_STEPS}`,
+            stepLabel: `${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 2 / ${VISIBLE_STEPS}`,
             stateKey: 'intentGoal',
-            title: { en: `Why are you learning ${targetName}?`, ru: `Зачем тебе ${targetName === 'Английский' ? 'английский' : targetName === 'Испанский' ? 'испанский' : targetName === 'Арабский' ? 'арабский' : targetName}?`, es: `¿Por qué aprendes ${targetName}?` }[lang],
-            subtitle: (goalSubtitles[targetCode] || goalSubtitles.en)[lang],
-            nextStep: 3,
+            title: { en: `Why are you learning ${targetName}?`, ru: `Зачем тебе ${targetName}?`, es: `¿Por qué aprendes ${targetName}?` }[lang],
+            subtitle: { en: "This helps us focus your learning path", ru: 'Это поможет нам настроить твой путь', es: 'Esto nos ayuda a enfocar tu camino' }[lang],
+            nextStep: 4,
             options: goalsByLang[targetCode] || goalsByLang.en,
             onNext(val) {
-                // Language-specific goal-to-interest mapping
                 const goalToInterests = {
-                    alphabet: ['script', 'reading'],
-                    heritage: ['culture', 'family'],
-                    religion: ['religion', 'reading'],
-                    relocate: ['social', 'business'],
-                    speak: ['social', 'movies'],
-                    work: ['business', 'tech'],
-                    travel: ['travel', 'food'],
-                    exam: ['exams', 'books'],
+                    alphabet: ['script', 'reading'], heritage: ['culture', 'family'],
+                    religion: ['religion', 'reading'], speak: ['social', 'movies'],
+                    work: ['business', 'tech'], travel: ['travel', 'food'],
+                    fun: ['social', 'culture'], exam: ['exams', 'books'],
                 };
                 LangyState.user.interests = goalToInterests[val] || ['social'];
                 LangyState.user.goal = val;
@@ -344,93 +343,126 @@ function renderOnboarding(container) {
     }
 
     // ═══════════════════════════════════════════
-    // STEP 3: Confidence self-estimate
+    // STEP 4: YOUR TEACHER
+    // Inline mascot selection — compact, warm, personal.
     // ═══════════════════════════════════════════
-    if (step === 3) {
+    if (step === 4) {
         const targetCode = ScreenState.get('targetLangChoice', 'en');
-        const targetCfg = typeof LangyTarget !== 'undefined' ? (LangyTarget.LANGUAGES[targetCode] || {}) : {};
-        const targetName = (targetCfg.name || {})[lang] || targetCfg.nativeName || 'this language';
+        const selectedTeacher = ScreenState.get('teacherChoice', null);
 
-        // Language-specific confidence descriptions
-        const confByLang = {
-            ar: {
-                zero: { en: "I've never seen the Arabic script before", ru: 'Я никогда не видел арабское письмо', es: 'Nunca he visto la escritura árabe' },
-                basic: { en: 'I recognise some letters and can sound out words', ru: 'Узнаю некоторые буквы и могу читать по слогам', es: 'Reconozco algunas letras y puedo deletrear palabras' },
-                intermediate: { en: 'I can read Arabic text and hold simple conversations', ru: 'Могу читать арабский текст и вести простые разговоры', es: 'Puedo leer texto árabe y mantener conversaciones simples' },
-                advanced: { en: 'I read and speak well — want to refine and expand', ru: 'Читаю и говорю хорошо — хочу улучшить и расширить', es: 'Leo y hablo bien — quiero perfeccionar y ampliar' },
-            },
-            es: {
-                zero: { en: 'Just hola and gracias so far', ru: 'Только hola и gracias пока', es: 'Solo hola y gracias por ahora' },
-                basic: { en: 'I can order food and introduce myself', ru: 'Могу заказать еду и представиться', es: 'Puedo pedir comida y presentarme' },
-                intermediate: { en: 'I can chat but struggle with tenses', ru: 'Могу общаться, но путаюсь во временах', es: 'Puedo charlar pero me lío con los tiempos' },
-                advanced: { en: 'I speak well but want native-level fluency', ru: 'Говорю хорошо, но хочу уровень носителя', es: 'Hablo bien pero quiero fluidez nativa' },
-            },
-            en: {
-                zero: { en: 'I know almost nothing', ru: 'Почти ничего не знаю', es: 'No sé casi nada' },
-                basic: { en: 'Simple phrases, basic grammar', ru: 'Простые фразы, базовая грамматика', es: 'Frases simples, gramática básica' },
-                intermediate: { en: 'I can talk but freeze in meetings', ru: 'Могу говорить, но зависаю на встречах', es: 'Puedo hablar pero me bloqueo en reuniones' },
-                advanced: { en: 'Fluent but want professional polish', ru: 'Бегло, но хочу профессиональный уровень', es: 'Fluido pero quiero nivel profesional' },
-            },
+        // Get language-appropriate mascots
+        const mascotIds = typeof TalkEngine !== 'undefined'
+            ? TalkEngine.getMascotIdsForLanguage(targetCode)
+            : (targetCode === 'ar' ? [3, 4, 5] : [0, 1, 2]);
+
+        const allMascots = {
+            0: { id: 0, name: 'Zendaya', icon: '💜',
+                style: { en: 'Cheerful & Encouraging', ru: 'Весёлая и поддерживающая', es: 'Alegre y motivadora' }[lang],
+                desc: { en: 'Celebrates every win. Makes learning feel easy.', ru: 'Празднует каждый успех. Учиться легко.', es: 'Celebra cada logro. Aprender es fácil.' }[lang],
+                color: '#7C6CF6' },
+            1: { id: 1, name: 'Travis', icon: '💚',
+                style: { en: 'Creative & Playful', ru: 'Креативный и весёлый', es: 'Creativo y divertido' }[lang],
+                desc: { en: 'Teaches through games, humor, and surprises.', ru: 'Учит через игры, юмор и сюрпризы.', es: 'Enseña con juegos, humor y sorpresas.' }[lang],
+                color: '#4ADE80' },
+            2: { id: 2, name: 'Matthew', icon: '💛',
+                style: { en: 'Smart & Structured', ru: 'Умный и системный', es: 'Inteligente y estructurado' }[lang],
+                desc: { en: 'Calm, precise, loves meaningful conversation.', ru: 'Спокойный, точный, любит глубокие беседы.', es: 'Calmado, preciso, ama la conversación profunda.' }[lang],
+                color: '#F59E0B' },
+            3: { id: 3, name: 'Omar', icon: '💙',
+                style: { en: 'Energetic & Welcoming', ru: 'Энергичный и гостеприимный', es: 'Energético y acogedor' }[lang],
+                desc: { en: 'Charismatic guide. Learning feels like a warm chat.', ru: 'Харизматичный гид. Обучение как тёплая беседа.', es: 'Guía carismático. Aprender es como una charla cálida.' }[lang],
+                color: '#06B6D4' },
+            4: { id: 4, name: 'Elyanna', icon: '💜',
+                style: { en: 'Modern & Magnetic', ru: 'Современная и обаятельная', es: 'Moderna y magnética' }[lang],
+                desc: { en: 'Makes Arabic feel contemporary and beautiful.', ru: 'Арабский — современный и красивый.', es: 'Hace que el árabe se sienta contemporáneo.' }[lang],
+                color: '#C084FC' },
+            5: { id: 5, name: 'Adel Imam', icon: '🧡',
+                style: { en: 'Warm & Theatrical', ru: 'Тёплый и театральный', es: 'Cálido y teatral' }[lang],
+                desc: { en: 'Teaches with humor, wisdom, and heart.', ru: 'Учит с юмором, мудростью и душой.', es: 'Enseña con humor, sabiduría y corazón.' }[lang],
+                color: '#F97316' },
         };
-        const cd = confByLang[targetCode] || confByLang.en;
+
+        const teacherOptions = mascotIds
+            .filter(id => allMascots[id])
+            .map(id => {
+                const m = allMascots[id];
+                return { id: String(m.id), icon: m.icon, label: `${m.name} — ${m.style}`, desc: m.desc };
+            });
 
         renderPillStep({
-            stepLabel: `3 / ${TOTAL_STEPS}`,
+            stepLabel: `${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 3 / ${VISIBLE_STEPS}`,
+            stateKey: 'teacherChoice',
+            title: { en: 'Meet your tutor', ru: 'Познакомься с репетитором', es: 'Conoce a tu tutor' }[lang],
+            subtitle: { en: 'Each tutor has their own personality and teaching style', ru: 'У каждого — свой характер и стиль обучения', es: 'Cada tutor tiene su personalidad y estilo' }[lang],
+            nextStep: 5,
+            options: teacherOptions,
+            onNext(val) {
+                const mascotId = parseInt(val) || 0;
+                LangyState.mascot.selected = mascotId;
+            },
+        });
+        return;
+    }
+
+    // ═══════════════════════════════════════════
+    // STEP 5: YOUR LEVEL
+    // Beginner-friendly self-assessment. No test, no intimidation.
+    // ═══════════════════════════════════════════
+    if (step === 5) {
+        const targetCode = ScreenState.get('targetLangChoice', 'en');
+        const targetCfg = typeof LangyTarget !== 'undefined' ? (LangyTarget.LANGUAGES[targetCode] || {}) : {};
+
+        const langNames = {
+            en: { en: 'English', es: 'Spanish', ar: 'Arabic' },
+            ru: { en: 'английского', es: 'испанского', ar: 'арабского' },
+            es: { en: 'inglés', es: 'español', ar: 'árabe' },
+        };
+        const targetName = (langNames[lang] || langNames.en)[targetCode] || targetCfg.nativeName || 'this language';
+
+        renderPillStep({
+            stepLabel: `${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 4 / ${VISIBLE_STEPS}`,
             stateKey: 'intentConfidence',
-            title: { en: `Your ${targetName} level?`, ru: `Твой уровень ${targetName === 'Английский' ? 'английского' : targetName === 'Испанский' ? 'испанского' : targetName === 'Арабский' ? 'арабского' : targetName}?`, es: `¿Tu nivel de ${targetName}?` }[lang],
-            subtitle: {
-                en: 'No test needed — just pick what feels right',
-                ru: 'Без теста — просто выбери, что подходит',
-                es: 'Sin prueba — elige lo que sientas',
-            }[lang],
-            nextStep: 4,
+            title: { en: `How much ${targetName} do you know?`, ru: `Сколько ${targetName} ты знаешь?`, es: `¿Cuánto ${targetName} sabes?` }[lang],
+            subtitle: { en: 'No test — just pick what feels right', ru: 'Без теста — просто выбери, что подходит', es: 'Sin prueba — elige lo que sientas' }[lang],
+            nextStep: 6,
             options: [
-                {
-                    id: 'zero',
-                    icon: LangyIcons.seedling || LangyIcons.heart,
-                    label: { en: 'Total beginner', ru: 'Полный ноль', es: 'Principiante total' }[lang],
-                    desc: cd.zero[lang],
-                },
-                {
-                    id: 'basic',
-                    icon: LangyIcons.bookOpen,
-                    label: { en: 'I know the basics', ru: 'Знаю базу', es: 'Sé lo básico' }[lang],
-                    desc: cd.basic[lang],
-                },
-                {
-                    id: 'intermediate',
-                    icon: LangyIcons.messageCircle,
-                    label: { en: 'I can have a conversation', ru: 'Могу поговорить', es: 'Puedo conversar' }[lang],
-                    desc: cd.intermediate[lang],
-                },
-                {
-                    id: 'advanced',
-                    icon: LangyIcons.trophy,
-                    label: { en: 'Pretty good actually', ru: 'Довольно хорошо', es: 'Bastante bien' }[lang],
-                    desc: cd.advanced[lang],
-                },
+                { id: 'zero', icon: '🌱',
+                    label: { en: 'Complete beginner', ru: 'Полный новичок', es: 'Principiante total' }[lang],
+                    desc: {
+                        ar: { en: "I've never seen the Arabic script", ru: 'Никогда не видел арабское письмо', es: 'Nunca he visto la escritura árabe' },
+                        es: { en: 'Maybe just hola and gracias', ru: 'Может только hola и gracias', es: 'Quizás solo hola y gracias' },
+                        en: { en: 'Starting from scratch', ru: 'Начинаю с нуля', es: 'Empezando desde cero' },
+                    }[targetCode]?.[lang] || '' },
+                { id: 'basic', icon: '📖',
+                    label: { en: 'Know a few words', ru: 'Знаю несколько слов', es: 'Sé algunas palabras' }[lang],
+                    desc: {
+                        ar: { en: 'I recognise some letters', ru: 'Узнаю некоторые буквы', es: 'Reconozco algunas letras' },
+                        es: { en: 'Can introduce myself and order food', ru: 'Могу представиться и заказать еду', es: 'Puedo presentarme y pedir comida' },
+                        en: { en: 'Simple phrases and basic grammar', ru: 'Простые фразы и базовая грамматика', es: 'Frases simples y gramática básica' },
+                    }[targetCode]?.[lang] || '' },
+                { id: 'intermediate', icon: '💬',
+                    label: { en: 'Can hold a simple conversation', ru: 'Могу вести простой разговор', es: 'Puedo mantener una conversación simple' }[lang],
+                    desc: {
+                        ar: { en: 'I can read and chat in Arabic', ru: 'Могу читать и общаться по-арабски', es: 'Puedo leer y charlar en árabe' },
+                        es: { en: 'I can chat but struggle with tenses', ru: 'Общаюсь, но путаюсь во временах', es: 'Puedo charlar pero me lío con los tiempos' },
+                        en: { en: 'Conversational but not confident', ru: 'Могу говорить, но не уверен', es: 'Conversacional pero no seguro' },
+                    }[targetCode]?.[lang] || '' },
+                { id: 'advanced', icon: '🏆',
+                    label: { en: 'Already comfortable speaking', ru: 'Уже свободно говорю', es: 'Ya hablo con soltura' }[lang],
+                    desc: {
+                        ar: { en: 'Want to refine and polish', ru: 'Хочу улучшить и отполировать', es: 'Quiero refinar y pulir' },
+                        es: { en: 'Aiming for near-native fluency', ru: 'Стремлюсь к уровню носителя', es: 'Apunto a fluidez casi nativa' },
+                        en: { en: 'Want professional-level polish', ru: 'Хочу профессиональный уровень', es: 'Quiero nivel profesional' },
+                    }[targetCode]?.[lang] || '' },
             ],
             onNext(val) {
-                // Map confidence to CEFR level
-                const confidenceToLevel = {
-                    zero: 'A1',
-                    basic: 'A2',
-                    intermediate: 'B1',
-                    advanced: 'B2',
-                };
+                const confidenceToLevel = { zero: 'Pre-A1', basic: 'A1', intermediate: 'B1', advanced: 'B2' };
                 const cefr = confidenceToLevel[val] || 'B1';
-                const levelNames = {
-                    A1: 'Beginner / Начинающий',
-                    A2: 'Elementary / Элементарный',
-                    B1: 'Intermediate / Средний',
-                    B2: 'Upper Intermediate / Выше среднего',
-                };
+                const levelNames = { 'Pre-A1': 'Starter', A1: 'Beginner', B1: 'Intermediate', B2: 'Upper Intermediate' };
                 LangyState.user.level = `${cefr} ${levelNames[cefr]}`;
                 LangyState.user.hasCompletedPlacement = true;
                 LangyState.settings.languageLevel = cefr;
                 LangyState.user.confidenceLevel = val;
-
-                // Auto-select textbook for the chosen language
                 if (typeof LangyCurriculum !== 'undefined') {
                     LangyCurriculum.selectTextbookByLevel(cefr);
                 }
@@ -440,93 +472,84 @@ function renderOnboarding(container) {
     }
 
     // ═══════════════════════════════════════════
-    // STEP 4: Final start CTA
+    // STEP 6: READY — personalized final CTA
+    // Shows tutor name. Beginners → lesson. Intermediate → speaking.
     // ═══════════════════════════════════════════
-    if (step === 4) {
-        // Pull chosen language info for the final screen
+    if (step === 6) {
         const targetCode = ScreenState.get('targetLangChoice', 'en');
         const targetCfg = typeof LangyTarget !== 'undefined' ? (LangyTarget.LANGUAGES[targetCode] || {}) : {};
-        const targetName = (targetCfg.name || {})[lang] || targetCfg.nativeName || 'English';
+        const userConfidence = ScreenState.get('intentConfidence', 'intermediate');
+        const isBeginner = userConfidence === 'zero' || userConfidence === 'basic';
         const targetFlag = targetCfg.flag || '🇬🇧';
+
+        // Get tutor name for personalization
+        const mascotId = LangyState.mascot?.selected ?? 0;
+        const tutorNames = { 0: 'Zendaya', 1: 'Travis', 2: 'Matthew', 3: 'Omar', 4: 'Elyanna', 5: 'Adel Imam' };
+        const tutorName = tutorNames[mascotId] || 'your tutor';
+
+        const heroTitle = isBeginner
+            ? { en: "You're all set!", ru: 'Всё готово!', es: '¡Todo listo!' }[lang]
+            : { en: 'Your path is ready!', ru: 'Твой путь готов!', es: '¡Tu camino está listo!' }[lang];
+
+        const heroSubtitle = isBeginner
+            ? { en: `${tutorName} will start you with a short lesson to build your confidence, then you'll practice speaking together.`,
+                ru: `${tutorName} начнёт с короткого урока, чтобы ты почувствовал уверенность, а потом вы поговорите вместе.`,
+                es: `${tutorName} empezará con una lección corta para que ganes confianza, y luego practicarás hablando.` }[lang]
+            : { en: `${tutorName} will guide you through a real conversation from the very first session.`,
+                ru: `${tutorName} проведёт тебя через реальный разговор с первой же сессии.`,
+                es: `${tutorName} te guiará en una conversación real desde la primera sesión.` }[lang];
+
+        const ctaText = { en: 'Open my learning home', ru: 'Открыть главную', es: 'Abrir mi inicio' }[lang];
+        const ctaIcon = LangyIcons.home;
 
         container.innerHTML = `
             <div class="screen onboarding">
                 <div class="onboarding__slide" style="animation: fadeInUp 0.5s ease-out; text-align:center; padding-top:var(--sp-8);">
-                    <div style="margin-bottom:var(--sp-6);">
-                        <img src="assets/logo.png" alt="Langy"
-                             style="width:80px; height:auto; margin:0 auto var(--sp-4); display:block;"
-                             onerror="this.style.display='none'">
-                    </div>
-                    <div class="onboarding__step-badge" style="margin:0 auto var(--sp-3); width:max-content;">4 / ${TOTAL_STEPS}</div>
+                    <div class="onboarding__step-badge" style="margin:0 auto var(--sp-4); width:max-content;">${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 5 / ${VISIBLE_STEPS}</div>
 
-                    <div style="font-size:48px; margin-bottom:var(--sp-3);">${targetFlag}</div>
+                    <div style="font-size:56px; margin-bottom:var(--sp-4);">${targetFlag}</div>
 
-                    <h2 class="onboarding__title">${{
-                        ar: { en: 'Your Arabic script journey begins!', ru: 'Твой путь к арабскому письму начинается!', es: '¡Tu camino a la escritura árabe comienza!' },
-                        es: { en: 'Vamos — your Spanish path is ready!', ru: 'Vamos — твой путь в испанском готов!', es: '¡Vamos — tu camino en español está listo!' },
-                        en: { en: 'Your English growth starts now!', ru: 'Рост твоего английского начинается!', es: '¡Tu crecimiento en inglés empieza ahora!' },
-                    }[targetCode]?.[lang] || `Let's start your ${targetName} journey!`}</h2>
+                    <h2 class="onboarding__title" style="font-size:var(--fs-2xl);">${heroTitle}</h2>
 
-                    <p class="onboarding__subtitle" style="max-width:340px; margin:var(--sp-3) auto 0;">${{
-                        ar: { en: 'You\'ll start by learning the Arabic alphabet in small groups, then vowels, then reading your first real words.', ru: 'Ты начнёшь с арабского алфавита по группам, затем гласные, затем чтение первых настоящих слов.', es: 'Empezarás con el alfabeto árabe en grupos pequeños, luego vocales, luego leerás tus primeras palabras reales.' },
-                        es: { en: 'Your AI coach will help you start speaking Spanish from the very first session.', ru: 'ИИ-коуч поможет заговорить по-испански с первой же сессии.', es: 'Tu coach IA te ayudará a hablar español desde la primera sesión.' },
-                        en: { en: 'Your AI coach will help you speak, think, and grow in English — starting now.', ru: 'ИИ-коуч поможет тебе говорить, думать и расти в английском — начиная сейчас.', es: 'Tu coach IA te ayudará a hablar, pensar y crecer en inglés — empezando ahora.' },
-                    }[targetCode]?.[lang] || 'Your AI coach is ready.'}</p>
+                    <p class="onboarding__desc" style="max-width:340px; margin:var(--sp-3) auto 0; line-height:1.6;">${heroSubtitle}</p>
                 </div>
 
                 <div class="onboarding__bottom">
                     <button class="btn btn--primary btn--lg btn--full onboarding__btn" id="onboarding-finish">
-                        ${{ 
-                            ar: { en: 'Start with the Arabic script', ru: 'Начать с арабского письма', es: 'Empezar con la escritura árabe' },
-                            es: { en: 'Start speaking Spanish', ru: 'Начать говорить по-испански', es: 'Empezar a hablar español' },
-                            en: { en: 'Start your English session', ru: 'Начать сессию английского', es: 'Iniciar sesión de inglés' },
-                        }[targetCode]?.[lang] || 'Start guided speaking'} ${LangyIcons.rocket}
+                        ${ctaText} ${ctaIcon}
                     </button>
                 </div>
             </div>
         `;
 
         container.querySelector('#onboarding-finish').addEventListener('click', () => {
-            // Capture user context before clearing ScreenState
             const userGoal = ScreenState.get('intentGoal', 'speak');
-            const userConfidence = ScreenState.get('intentConfidence', 'intermediate');
-            const defaultMascot = LangyState.mascot.selected ?? 0;
+            const chosenMascot = LangyState.mascot.selected ?? 0;
 
-            // Clean up temp state
             ScreenState.clear();
 
-            // Mark onboarding as done
             LangyState.user.hasCompletedOnboarding = true;
-            LangyState.mascot.selected = defaultMascot;
+            LangyState.mascot.selected = chosenMascot;
 
-            // Save progress
             if (typeof LangyDB !== 'undefined') {
                 LangyDB.saveProgress().catch(() => {});
             }
 
-            Anim.showToast(`${{ en: 'Coach is ready!', ru: 'Коуч готов!', es: '¡Tu coach está listo!' }[lang]} ${LangyIcons.sparkles}`);
+            Anim.showToast({ en: 'Your course is ready!', ru: 'Твой курс готов!', es: '¡Tu curso está listo!' }[lang]);
 
-            // ─── SPEAKING-FIRST: Go directly into first talk session ───
-            // Pre-configure the talk screen to skip the picker and start immediately
             const scenarioMap = {
-                speak: 'coffee',       // casual & approachable
-                work: 'interview',     // professional context
-                travel: 'airport',     // travel scenario
-                exam: 'free',          // flexible practice
-                alphabet: 'roommate',  // gentle Arabic start
-                heritage: 'coffee',    // warm social
-                religion: 'free',      // open practice
-                relocate: 'airport',   // relocation/travel
+                speak: 'coffee', work: 'interview', travel: 'airport',
+                fun: 'coffee', exam: 'free', alphabet: 'roommate',
+                heritage: 'coffee', religion: 'free',
             };
-            // For absolute beginners, use the friendliest scenario
-            const scenario = userConfidence === 'zero' ? 'roommate' : scenarioMap[userGoal] || 'coffee';
 
-            ScreenState.set('talkMascot', defaultMascot);
-            ScreenState.set('talkScenario', scenario);
-            ScreenState.set('firstTalkSession', true);
-            ScreenState.set('talkView', 'call');
+            ScreenState.set('talkMascot', chosenMascot);
+            ScreenState.set('talkScenario', scenarioMap[userGoal] || 'coffee');
+            ScreenState.set('guidedSpeaking', true);
+            ScreenState.remove('talkView');
+            ScreenState.remove('firstTalkSession');
 
-            setTimeout(() => Router.navigate('talk'), 600);
+            setTimeout(() => Router.navigate('home'), 600);
         });
 
         return;

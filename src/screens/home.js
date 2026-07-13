@@ -76,9 +76,151 @@ function getActiveLessonMeta() {
         exerciseCount,
         minutes,
         goal: unit.objective || (Array.isArray(textbook.canDo) ? (textbook.canDo[unit.id - 1] || textbook.canDo[0]) : ''),
-        title: `Unit ${unit.id}: ${unit.title}`,
+        title: `${i18n('home.unit_prefix')} ${unit.id}: ${unit.title}`,
         subtitle: `${unit.desc || unit.grammar?.join(', ') || i18n('learn.next_lesson')} · ${exerciseCount} ${i18n('learn.exercises')} · ~${minutes} ${i18n('learn.minutes')}`,
     };
+}
+
+function formatHomeText(key, values = {}) {
+    let text = i18n(key);
+    Object.entries(values).forEach(([name, value]) => {
+        text = text.replaceAll(`{${name}}`, value);
+    });
+    return text;
+}
+
+function getHomeMascotName() {
+    const names = ['Zendaya', 'Travis', 'Matthew', 'Omar', 'Elyanna', 'Adel Imam'];
+    return names[LangyState.mascot.selected || 0] || 'Langy';
+}
+
+function getLessonDraft(meta) {
+    const draft = LangyState.progress?.lessonDraft;
+    if (!draft || !meta?.textbook || !meta?.unit) return null;
+    if (draft.textbookId !== meta.textbook.id || draft.unitId !== meta.unit.id) return null;
+    if (draft.status === 'completed') return null;
+    return draft;
+}
+
+function getLevelProgress(textbook) {
+    if (!textbook?.units?.length) return { passed: 0, total: 0, pct: 0 };
+    const mastery = LangyState.progress?.mastery || {};
+    const passed = textbook.units.filter(unit => mastery[`${textbook.id}:${unit.id}`]?.passed).length;
+    return {
+        passed,
+        total: textbook.units.length,
+        pct: Math.round((passed / textbook.units.length) * 100),
+    };
+}
+
+function renderHomeLessonCard(meta) {
+    if (!meta) return '';
+    const draft = getLessonDraft(meta);
+    const buttonLabel = draft ? i18n('home.lesson_continue') : i18n('home.lesson_start');
+    const currentStep = Number.isInteger(draft?.currentExerciseIdx) && draft?.totalExercises
+        ? `<span>${formatHomeText('home.lesson_resume_state', {
+            current: Math.min(draft.currentExerciseIdx + 1, draft.totalExercises),
+            total: draft.totalExercises,
+        })}</span>`
+        : '';
+    const lessonGoal = meta.goal || meta.unit.desc || i18n('home.lesson_goal_fallback');
+
+    return `
+        <section class="home-learning-card home-learning-card--lesson" id="home-lesson-card" aria-labelledby="home-lesson-title">
+            <div class="home-learning-card__header">
+                <span class="home-learning-card__eyebrow">${i18n('home.lesson_label')}</span>
+                ${currentStep ? `<span class="home-learning-card__state">${currentStep}</span>` : ''}
+            </div>
+            <h2 class="home-learning-card__title" id="home-lesson-title">${escapeHTML(meta.title)}</h2>
+            <p class="home-learning-card__goal">${escapeHTML(lessonGoal)}</p>
+            <div class="home-learning-card__meta">
+                <span>${LangyIcons.target} ${meta.exerciseCount} ${i18n('learn.exercises')}</span>
+                <span>${LangyIcons.clock} ${formatHomeText('home.lesson_about_minutes', { minutes: meta.minutes })}</span>
+            </div>
+            <button id="nav-learning" class="btn btn--primary btn--xl btn--full home-learning-card__button">
+                ${LangyIcons.bookOpen} ${buttonLabel}
+            </button>
+        </section>
+    `;
+}
+
+function renderHomeTalkCard(meta, recommendedScenario) {
+    const mascotName = getHomeMascotName();
+    const hasMistakes = (LangyState.coachData?.mistakePatterns || []).length > 0;
+    const hasTalkDraft = !!ScreenState.get('talkView') && ScreenState.get('talkView') !== 'summary';
+    const options = [
+        { mode: 'free', label: i18n('home.talk_free'), icon: LangyIcons.messageCircle },
+        { mode: 'lesson', label: i18n('home.talk_lesson'), icon: LangyIcons.bookOpen },
+        { mode: 'mistakes', label: i18n('home.talk_mistakes'), icon: LangyIcons.target, disabled: !hasMistakes },
+        { mode: 'scenario', label: i18n('home.talk_scenario'), icon: LangyIcons.map },
+        { mode: 'resume', label: i18n('home.talk_resume'), icon: LangyIcons.play, disabled: !hasTalkDraft },
+    ];
+
+    return `
+        <section class="home-learning-card home-learning-card--talk" id="home-talk-card" aria-labelledby="home-talk-title">
+            <div class="home-learning-card__header">
+                <span class="home-learning-card__eyebrow">${formatHomeText('home.talk_with', { mascot: mascotName })}</span>
+                <span class="home-learning-card__state">${i18n('home.secondary_cta')}</span>
+            </div>
+            <h3 class="home-learning-card__title home-learning-card__title--sm" id="home-talk-title">${escapeHTML(meta?.unit?.title || i18n('home.talk_default_topic'))}</h3>
+            <p class="home-learning-card__goal">${i18n('home.talk_subtitle')}</p>
+            <div class="home-talk-options" data-recommended-scenario="${recommendedScenario || 'coffee'}">
+                ${options.map(option => `
+                    <button class="home-talk-option ${option.disabled ? 'home-talk-option--disabled' : ''}" data-talk-mode="${option.mode}" ${option.disabled ? 'disabled' : ''}>
+                        ${option.icon} <span>${option.label}</span>
+                    </button>
+                `).join('')}
+            </div>
+        </section>
+    `;
+}
+
+function renderHomeCourseCard(meta) {
+    const tc = typeof LangyTarget !== 'undefined' ? LangyTarget.current : null;
+    if (!tc || !tc.featured) return '';
+
+    const lang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
+    const textbook = meta?.textbook || (typeof LangyCurriculum !== 'undefined' ? LangyCurriculum.getActive() : null);
+    const levelProgress = getLevelProgress(textbook);
+    const trackColor = tc.trackColor || '#10B981';
+    const langName = typeof LangyTarget !== 'undefined' && LangyTarget.displayName ? LangyTarget.displayName(lang) : tc.nativeName;
+    const features = [
+        i18n('home.course_feature_cefr'),
+        i18n('home.course_feature_grammar'),
+        i18n('home.course_feature_vocab'),
+        i18n('home.course_feature_tutor'),
+    ];
+
+    return `
+        <section class="home-course-card" id="home-course-card" style="--track-color:${trackColor};" aria-labelledby="home-course-title">
+            <div class="home-course-card__top">
+                <span class="home-course-card__flag">${tc.flag}</span>
+                <div>
+                    <div class="home-course-card__title-row">
+                        <h3 id="home-course-title">${escapeHTML(langName)}</h3>
+                        <span>${i18n('home.course_structured')}</span>
+                    </div>
+                    <p>${i18n('home.course_track_desc')}</p>
+                </div>
+            </div>
+            <div class="home-course-card__features">
+                ${features.map(feature => `<span>${feature}</span>`).join('')}
+            </div>
+            <div class="home-course-card__progress">
+                <div>
+                    <span>${i18n('home.level_progress')}</span>
+                    <strong>${textbook?.cefr || 'Pre-A1'} ${levelProgress.pct}%</strong>
+                </div>
+                <div class="home-course-card__bar"><span style="width:${levelProgress.pct}%;"></span></div>
+                <div class="home-course-card__unit">
+                    ${i18n('home.current_unit')}: ${escapeHTML(meta?.title || i18n('learn.next_lesson'))}
+                </div>
+            </div>
+            <button class="home-course-card__map" id="home-course-map">
+                ${LangyIcons.map} ${i18n('home.view_course_map')}
+            </button>
+        </section>
+    `;
 }
 
 // Compact streak dots for inline row
@@ -234,15 +376,9 @@ function renderHome(container) {
     }
 
     const talkSessions = (LangyState.talkHistory || []).length;
-    const lessonsDone = (LangyState.progress.lessonHistory || []).length;
     const isFirstJourney = !user.hasCompletedOnboarding && !user.firstSessionCompleted;
     const isBeforeFirstSession = !user.firstSessionCompleted;
     const isEarlyJourney = isFirstJourney || isBeforeFirstSession || talkSessions < 3;
-    // True beginner: zero/basic confidence AND hasn't done a lesson yet
-    // Also treat unknown confidence (null) + no lessons as true beginner
-    const isTrueBeginner = isEarlyJourney && lessonsDone === 0 && (user.confidenceLevel === 'zero' || user.confidenceLevel === 'basic' || !user.confidenceLevel);
-    // Post-lesson beginner: did a lesson but hasn't spoken yet
-    const isPostLessonBeginner = isEarlyJourney && lessonsDone > 0 && !user.firstSessionCompleted;
     const firstScenario = user.firstSpeakingScenarioId || 'coffee';
     const nextScenarioByGoal = {
         speak: 'coffee',
@@ -318,230 +454,12 @@ function renderHome(container) {
                 </div>
             </div>
 
-            <!-- Language Path Badge -->
-            ${(() => {
-                const tc = typeof LangyTarget !== 'undefined' ? LangyTarget.current : null;
-                if (!tc) return '';
-                const isFeatured = tc.featured === true;
-                const langName = typeof LangyTarget !== 'undefined' && LangyTarget.displayName ? LangyTarget.displayName(lang) : tc.nativeName;
-                const tagline = tc.tagline ? (tc.tagline[lang] || tc.tagline.en) : '';
-                const highlights = tc.highlights ? (tc.highlights[lang] || tc.highlights.en) : [];
-                const fc = '#D97706';
-
-                if (isFeatured) {
-                    // Track-specific enrichment
-                    const isEnglishTrack = tc.code === 'en';
-                    const isArabicTrack = tc.code === 'ar';
-                    const trackColor = tc.trackColor || fc;
-                    let cefrBar = '';
-                    let unitCtx = '';
-                    let pathCtx = '';
-
-                    // CEFR progress bar (English + Arabic)
-                    if ((isEnglishTrack || isArabicTrack) && typeof LangyCurriculum !== 'undefined') {
-                        const tb = LangyCurriculum.getActive();
-                        if (tb) {
-                            const mastery = LangyState.progress?.mastery || {};
-                            const passed = tb.units.filter(u => { const k = tb.id + ':' + u.id; return mastery[k] && mastery[k].passed; }).length;
-                            const pct = Math.round((passed / tb.units.length) * 100);
-                            const unitId = LangyState.progress?.currentUnitId || 1;
-                            const curUnit = tb.units.find(u => u.id === unitId);
-                            cefrBar = `<div style="margin-top:6px;">
-                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
-                                    <span style="font-size:9px; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.3px;">${tb.cefr} ${{ en: 'progress', ru: 'прогресс', es: 'progreso' }[lang]}</span>
-                                    <span style="font-size:9px; font-weight:var(--fw-bold); color:${trackColor};">${pct}%</span>
-                                </div>
-                                <div style="height:4px; background:rgba(128,128,128,0.1); border-radius:2px; overflow:hidden;">
-                                    <div style="height:100%; width:${pct}%; background:${trackColor}; border-radius:2px; transition:width 0.5s;"></div>
-                                </div>
-                            </div>`;
-                            if (curUnit) {
-                                unitCtx = `<div style="font-size:9px; color:var(--text-tertiary); margin-top:4px;">
-                                    ${LangyIcons.bookOpen} ${{ en: 'Unit', ru: 'Урок', es: 'Unidad' }[lang]} ${unitId}: ${curUnit.title}${curUnit.grammar?.length ? ` · ${curUnit.grammar[0]}` : ''}
-                                </div>`;
-                            }
-                        }
-                    }
-
-                    // Arabic-specific: show learner path based on onboarding goal
-                    if (isArabicTrack && tc.learnerPaths) {
-                        const userGoal = LangyState.user?.goal || 'speak';
-                        const path = tc.learnerPaths[userGoal];
-                        if (path) {
-                            pathCtx = `<div style="font-size:9px; color:${trackColor}; margin-top:4px; display:flex; align-items:center; gap:4px;">
-                                <span>${path.icon}</span> ${path.label[lang] || path.label.en}
-                            </div>`;
-                        }
-                    }
-
-                    // Badge label: English=Structured, Arabic=Script-First (from trackIdentity), others=Featured
-                    const badgeLabel = tc.trackIdentity
-                        ? (tc.trackIdentity[lang] || tc.trackIdentity.en)
-                        : isEnglishTrack
-                            ? ({ en: 'Structured', ru: 'Структурный', es: 'Estructurado' }[lang])
-                            : ({ en: 'Featured', ru: 'Топ', es: 'Destacado' }[lang]);
-
-                    return `<div style="
-                        margin:0 var(--sp-5) var(--sp-3); padding:var(--sp-3) var(--sp-4);
-                        background:${trackColor}06; border:1px solid ${trackColor}22;
-                        border-radius:var(--radius-lg); display:flex; align-items:flex-start; gap:var(--sp-3);
-                    ">
-                        <span style="font-size:28px; flex-shrink:0;">${tc.flag}</span>
-                        <div style="flex:1; min-width:0;">
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <span style="font-weight:var(--fw-bold); font-size:var(--fs-sm);">${langName}</span>
-                                <span style="font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
-                                    background:${trackColor}; color:#fff; padding:1px 6px; border-radius:4px; line-height:14px;">
-                                    ${badgeLabel}</span>
-                            </div>
-                            <div style="font-size:10px; color:${trackColor}; margin-top:2px; font-weight:var(--fw-semibold, 600);">${tagline}</div>
-                            ${highlights.length > 0 ? `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
-                                ${highlights.map(h => `<span style="font-size:9px; padding:1px 6px; border-radius:var(--radius-full);
-                                    background:${trackColor}08; color:${trackColor}; border:1px solid ${trackColor}15;">${h}</span>`).join('')}
-                            </div>` : ''}
-                            ${pathCtx}
-                            ${cefrBar}
-                            ${unitCtx}
-                        </div>
-                    </div>`;
-                }
-                return `<div style="
-                    margin:0 var(--sp-5) var(--sp-3); padding:var(--sp-2) var(--sp-4);
-                    background:var(--bg-card); border:1px solid var(--border);
-                    border-radius:var(--radius-lg); display:flex; align-items:center; gap:var(--sp-2);
-                ">
-                    <span style="font-size:20px;">${tc.flag}</span>
-                    <span style="font-weight:var(--fw-semibold, 600); font-size:var(--fs-sm);">${langName}</span>
-                </div>`;
-            })()}
-
-            <!-- Current Learning Goal -->
-            ${(() => {
-                if (typeof LangyCurriculum === 'undefined' || typeof LangyTarget === 'undefined') return '';
-                const targetCode = LangyTarget.getCode();
-                if (targetCode !== 'en' && targetCode !== 'ar') return '';
-                const tb = LangyCurriculum.getActive();
-                if (!tb || !tb.canDo || !tb.canDo.length) return '';
-                const currentUnitId = activeLessonMeta?.unit?.id || 1;
-                const completed = Math.max(0, currentUnitId - 1);
-                const nextGoal = activeLessonMeta?.goal || tb.canDo[Math.min(completed, tb.canDo.length - 1)];
-                if (!nextGoal) return '';
-                const l = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
-                const tc = LangyTarget.current;
-                const goalColor = (targetCode === 'ar' && tc.trackColor) ? tc.trackColor : '#10B981';
-                const goalIcon = targetCode === 'ar' ? (tc.learnerPaths?.[LangyState.user?.goal]?.icon || LangyIcons.target) : LangyIcons.target;
-                return `<div style="margin:0 var(--sp-5) var(--sp-2); padding:var(--sp-2) var(--sp-3); background:${goalColor}08; border:1px solid ${goalColor}1A; border-radius:var(--radius-md); display:flex; align-items:center; gap:8px; cursor:pointer;" id="home-cando-goal">
-                    <span style="color:${goalColor}; flex-shrink:0; font-size:14px;">${goalIcon}</span>
-                    <div style="flex:1; min-width:0;">
-                        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:${goalColor}; line-height:1;">${{ en: 'Next goal', ru: 'Следующая цель', es: 'Próxima meta' }[l]} · ${tb.cefr}</div>
-                        <div style="font-size:10px; color:var(--text-secondary); line-height:1.4; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nextGoal}</div>
-                    </div>
-                    <span style="font-size:9px; color:var(--text-tertiary);">${completed}/${tb.canDo.length}</span>
-                </div>`;
-            })()}
-
-            <!-- Next Action Zone -->
-            <div class="home__next-action">
-                ${(() => {
-                    if (isTrueBeginner) {
-                        // True beginner: lesson milestone card
-                        return `
-                <div class="card" style="margin:0 var(--sp-5) var(--sp-3); padding:var(--sp-3) var(--sp-4); border:1px solid var(--border); background:var(--bg-card);">
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);">
-                        <div>
-                            <div style="font-size:var(--fs-xs); color:var(--text-tertiary);">
-                                ${{ en: 'Your learning path', ru: 'Твой путь обучения', es: 'Tu camino de aprendizaje' }[lang]}
-                            </div>
-                            <div style="font-weight:var(--fw-bold);">
-                                ${{ en: 'Start with a lesson', ru: 'Начни с урока', es: 'Empieza con una lección' }[lang]}
-                            </div>
-                        </div>
-                        <span style="font-size:20px;">📖</span>
-                    </div>
-                </div>`;
-                    } else if (isPostLessonBeginner) {
-                        // Post-lesson: speaking milestone
-                        return `
-                <div class="card" style="margin:0 var(--sp-5) var(--sp-3); padding:var(--sp-3) var(--sp-4); border:1px solid var(--border); background:var(--bg-card);">
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);">
-                        <div>
-                            <div style="font-size:var(--fs-xs); color:var(--text-tertiary);">
-                                ${{ en: 'Ready to practice!', ru: 'Готов к практике!', es: '¡Listo para practicar!' }[lang]}
-                            </div>
-                            <div style="font-weight:var(--fw-bold);">
-                                ${{ en: 'Lesson done — time to speak', ru: 'Урок пройден — время говорить', es: 'Lección hecha — hora de hablar' }[lang]}
-                            </div>
-                        </div>
-                        <span style="font-size:20px;">🎙</span>
-                    </div>
-                </div>`;
-                    } else if (isEarlyJourney) {
-                        // Intermediate/advanced early journey: speaking first (existing)
-                        return `
-                <div class="card" style="margin:0 var(--sp-5) var(--sp-3); padding:var(--sp-3) var(--sp-4); border:1px solid var(--border); background:var(--bg-card);">
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);">
-                        <div>
-                            <div style="font-size:var(--fs-xs); color:var(--text-tertiary);">
-                                ${isBeforeFirstSession
-                                    ? ({ en: 'First speaking session', ru: 'Первая разговорная сессия', es: 'Primera sesión de habla' }[lang])
-                                    : ({ en: 'First-week momentum', ru: 'Фокус первой недели', es: 'Impulso de la primera semana' }[lang])}
-                            </div>
-                            <div style="font-weight:var(--fw-bold);">
-                                ${isBeforeFirstSession
-                                    ? ({ en: 'Step 1/3', ru: 'Шаг 1/3', es: 'Paso 1/3' }[lang])
-                                    : ({ en: `Session ${Math.max(1, talkSessions + 1)} of 3`, ru: `Сессия ${Math.max(1, talkSessions + 1)} из 3`, es: `Sesión ${Math.max(1, talkSessions + 1)} de 3` }[lang])}
-                            </div>
-                        </div>
-                        <span style="font-size:20px;">🎯</span>
-                    </div>
-                </div>`;
-                    } else {
-                        // Established user: daily speaking + continuity
-                        return `
-                ${typeof DailySpeaking !== 'undefined' && user.hasCompletedPlacement ? DailySpeaking.renderCard() : ''}`;
-                    }
-                })()}
-
-                ${!isEarlyJourney && user.hasCompletedPlacement ? buildContinuityCard() : ''}
-
-                <!-- Main CTA -->
-                <div style="padding: 0 var(--sp-5) var(--sp-2);">
-                    <button id="nav-learning" class="btn btn--primary btn--xl btn--full" style="font-size: var(--fs-lg); display: flex; align-items: center; justify-content: center; gap: var(--sp-2); flex-direction: column; padding: 14px 24px;">
-                        ${(() => {
-                            if (isTrueBeginner) {
-                                // True beginner: lesson-first CTA
-                                return `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.bookOpen}</span> ${{ en: 'Start your first lesson', ru: 'Начать первый урок', es: 'Empezar tu primera lección' }[lang]}</div>
-                                <div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${activeLessonMeta ? activeLessonMeta.subtitle : ({ en: 'Learn key phrases before speaking', ru: 'Выучи ключевые фразы перед разговором', es: 'Aprende frases clave antes de hablar' }[lang])}</div>`;
-                            } else if (isPostLessonBeginner) {
-                                // Post-lesson: speaking CTA becomes primary
-                                return `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.mic}</span> ${{ en: 'Practice what you learned', ru: 'Практикуй то, что выучил', es: 'Practica lo que aprendiste' }[lang]}</div>
-                                <div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${{ en: 'Guided speaking session', ru: 'Разговорная сессия с поддержкой', es: 'Sesión de habla guiada' }[lang]}</div>`;
-                            } else if (isEarlyJourney) {
-                                // Intermediate/advanced: speaking-first
-                                return `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.mic}</span> ${
-                                    isBeforeFirstSession
-                                        ? ({ en: 'Start guided speaking', ru: 'Начать разговорную практику', es: 'Iniciar práctica de habla' }[lang])
-                                        : ({ en: 'Next speaking session', ru: 'Следующая разговорная сессия', es: 'Siguiente sesión de habla' }[lang])
-                                }</div>
-                                <div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${{ en: 'Short guided conversation', ru: 'Короткий разговор с поддержкой', es: 'Conversación guiada corta' }[lang]}</div>`;
-                            } else if (!user.hasCompletedPlacement) {
-                                return `${i18n('learn.title')} ${LangyIcons.fileText}`;
-                            } else {
-                                return `<div style="display:flex; align-items:center; gap:var(--sp-2);"><span style="font-size: 22px; display:flex;">${LangyIcons.rocket}</span> ${i18n('home.continue')}</div><div style="font-size:var(--fs-xs); opacity:0.8; font-weight:var(--fw-medium);">${activeLessonMeta ? activeLessonMeta.subtitle : i18n('learn.next_lesson')}</div>`;
-                            }
-                        })()}
-                    </button>
-                </div>
-
-                ${isPostLessonBeginner ? `
-                <!-- Secondary CTA: Continue lessons -->
-                <div style="padding: 0 var(--sp-5) var(--sp-2);">
-                    <button id="nav-continue-lesson" class="btn btn--secondary btn--lg btn--full" style="font-size: var(--fs-md); display: flex; align-items: center; justify-content: center; gap: var(--sp-2);">
-                        ${LangyIcons.bookOpen} ${{ en: 'Continue lessons', ru: 'Продолжить уроки', es: 'Continuar lecciones' }[lang]}
-                    </button>
-                </div>` : ''}
+            <div class="home-priority-stack" id="home-priority-stack">
+                ${renderHomeLessonCard(activeLessonMeta)}
+                ${renderHomeTalkCard(activeLessonMeta, recommendedScenario)}
+                ${renderHomeCourseCard(activeLessonMeta)}
+                ${user.hasCompletedPlacement ? buildContinuityCard() : ''}
             </div>
-
             <!-- Ecosystem Grid -->
             <div class="home__ecosystem">
                 <!-- Learn Section -->
@@ -611,48 +529,57 @@ function renderHome(container) {
         'nav-inventory': 'inventory',
         'nav-shop': 'shop',
         'home-profile': 'profile',
-        'home-cando-goal': 'progress',
+        'home-course-map': 'progress',
     };
 
-    // Main CTA button
+    const launchTalkFromHome = mode => {
+        const talkOptions = container.querySelector('.home-talk-options');
+        const scenarioFromCard = talkOptions?.dataset.recommendedScenario || recommendedScenario || 'coffee';
+        const scenarioByMode = {
+            free: 'free',
+            lesson: scenarioFromCard,
+            mistakes: scenarioFromCard,
+            scenario: scenarioFromCard,
+            resume: ScreenState.get('talkScenario', scenarioFromCard),
+        };
+
+        ScreenState.set('talkScenario', scenarioByMode[mode] || scenarioFromCard);
+        ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
+        ScreenState.set('guidedSpeaking', mode !== 'free');
+        ScreenState.set('talkView', mode === 'resume' && ScreenState.get('talkView') ? ScreenState.get('talkView') : 'call');
+
+        if (mode === 'mistakes') {
+            const topPattern = LangyState.coachData?.mistakePatterns?.[0];
+            if (topPattern) {
+                ScreenState.set('coachFocus', topPattern.label || topPattern.tag);
+                ScreenState.set('coachFocusTag', topPattern.tag);
+            }
+        } else {
+            ScreenState.remove('coachFocus');
+            ScreenState.remove('coachFocusTag');
+        }
+
+        Router.navigate('talk');
+    };
+
+    // Main CTA button: lesson is always the primary Home action.
     container.querySelector('#nav-learning')?.addEventListener('click', e => {
         Anim.ripple(e);
-        if (isTrueBeginner) {
-            // True beginner → go to lesson
-            const actionCards = container.querySelectorAll('.action-card');
-            Anim.flyOut([...actionCards]);
-            setTimeout(() => Router.navigate('learning'), 500);
-        } else if (isPostLessonBeginner || (isEarlyJourney && isBeforeFirstSession)) {
-            // Post-lesson beginner or intermediate first-timer → go to talk
-            ScreenState.set('talkScenario', recommendedScenario);
-            ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
-            ScreenState.set('firstTalkSession', true);
-            ScreenState.set('guidedSpeaking', true);
-            Router.navigate('talk');
-        } else if (isEarlyJourney) {
-            // Early journey, not first session → talk
-            ScreenState.set('talkScenario', recommendedScenario);
-            ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
-            ScreenState.set('guidedSpeaking', true);
-            ScreenState.set('talkView', 'call');
-            Router.navigate('talk');
-        } else if (!user.hasCompletedPlacement) {
+        if (!user.hasCompletedPlacement) {
             Router.navigate('placement-test');
-        } else {
-            const actionCards = container.querySelectorAll('.action-card');
-            Anim.flyOut([...actionCards]);
-            setTimeout(() => Router.navigate('learning'), 500);
+            return;
         }
-    });
-
-    // Secondary CTA: continue lessons (shown for post-lesson beginners)
-    container.querySelector('#nav-continue-lesson')?.addEventListener('click', e => {
-        Anim.ripple(e);
         const actionCards = container.querySelectorAll('.action-card');
         Anim.flyOut([...actionCards]);
         setTimeout(() => Router.navigate('learning'), 500);
     });
 
+    container.querySelectorAll('.home-talk-option').forEach(button => {
+        button.addEventListener('click', e => {
+            Anim.ripple(e);
+            launchTalkFromHome(button.dataset.talkMode);
+        });
+    });
     Object.entries(navMap).forEach(([id, route]) => {
         const el = container.querySelector(`#${id}`);
         if (el) {

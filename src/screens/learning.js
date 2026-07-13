@@ -80,6 +80,28 @@ function renderLearning(container) {
     let qrAttempts = 0; // Attempts without theory (max 2 before forced theory)
     let qrExercises = [];
 
+    function updateLessonDraft(extra = {}) {
+        if (mode !== 'lesson') return;
+        LangyState.progress.lessonDraft = {
+            textbookId: activeTb.id,
+            unitId: unit.id,
+            status: 'in_progress',
+            currentExerciseIdx,
+            totalExercises,
+            correctAnswers,
+            updatedAt: new Date().toISOString(),
+            ...extra,
+        };
+        if (typeof LangyDB !== 'undefined') LangyDB.saveProgress().catch(() => {});
+    }
+
+    function clearLessonDraft() {
+        const draft = LangyState.progress.lessonDraft;
+        if (draft?.textbookId === activeTb.id && draft?.unitId === unit.id) {
+            delete LangyState.progress.lessonDraft;
+        }
+    }
+
     // ─── MAIN RENDER ───
     function updateUI() {
         if (_destroyed) return;
@@ -195,6 +217,7 @@ function renderLearning(container) {
         target.querySelector('#start-lesson').onclick = () => {
             currentStep = teachSlides.length > 0 ? 'teach' : unit.theory ? 'theory' : 'practice';
             teachSlideIdx = 0;
+            updateLessonDraft({ status: 'started', currentExerciseIdx: 0, totalExercises, correctAnswers: 0 });
             updateUI();
 
             // Start AI chat integration — curriculum-aware for English
@@ -496,6 +519,7 @@ function renderLearning(container) {
             }
 
             currentExerciseIdx++;
+            updateLessonDraft({ status: 'in_progress', currentExerciseIdx, totalExercises, correctAnswers });
             setTimeout(() => {
                 if (!_destroyed) updateUI();
             }, 1400);
@@ -1288,6 +1312,8 @@ function renderLearning(container) {
 
     // ─── SAVE PROGRESS ───
     function saveLessonProgress(result) {
+        clearLessonDraft();
+
         const historyEntry = {
             id: Date.now(),
             unitId: unit.id,

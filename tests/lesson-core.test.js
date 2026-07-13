@@ -36,6 +36,85 @@ describe('Curriculum validation', () => {
         expect(result.stats.units).toBe(108);
         expect(result.stats.exercises).toBe(956);
     });
+
+    it('enriches every English unit and exercise with learning architecture metadata', () => {
+        const englishTextbooks = LangyCurriculum.getTextbooksForLanguage('en');
+        expect(englishTextbooks).toHaveLength(7);
+
+        englishTextbooks.forEach(textbook => {
+            textbook.units.forEach(unit => {
+                expect(unit.objective).toEqual(expect.any(String));
+                expect(unit.skillIds.length).toBeGreaterThan(0);
+                expect(unit.lessonStages).toEqual(expect.arrayContaining(LangyCurriculumValidator.requiredEnglishStages));
+                expect(unit.editorialStatus).toBe('needs_editorial_review');
+
+                unit.exercises.forEach(exercise => {
+                    expect(exercise.cefr).toBe(textbook.cefr);
+                    expect(unit.skillIds).toContain(exercise.skillId);
+                    expect(exercise.lessonObjective).toBe(unit.objective);
+                    expect(exercise.acceptedAnswers.length).toBeGreaterThan(0);
+                    expect(exercise.reviewStrategy.queue).toBe(true);
+                });
+            });
+        });
+
+        const coverage = LangyCurriculum.getContentCoverage();
+        const preA1 = coverage.find(item => item.id === 'pre_a1_starter');
+        expect(preA1.objectives).toBe(6);
+        expect(preA1.skillLinkedExercises).toBe(preA1.exercises);
+        expect(preA1.stages.mastery_check).toBeGreaterThan(0);
+    });
+});
+
+describe('Home information architecture', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        makeContainer();
+        resetState();
+        mockAnim();
+        LangyI18n.currentLang = 'en';
+        LangyCurriculum.activeTextbookId = 'pre_a1_starter';
+        LangyTarget.setLanguage?.('en');
+        LangyState.user.hasCompletedOnboarding = true;
+        LangyState.user.hasCompletedPlacement = true;
+        LangyState.progress.currentUnitId = 1;
+        LangyState.progress.mastery = {};
+    });
+
+    it('renders lesson, talk, and English Structured cards in priority order from active curriculum', () => {
+        const container = document.getElementById('screen-container');
+
+        renderHome(container);
+
+        const stack = container.querySelector('#home-priority-stack');
+        const firstThree = [...stack.children].slice(0, 3).map(el => el.id);
+        expect(firstThree).toEqual(['home-lesson-card', 'home-talk-card', 'home-course-card']);
+        expect(container.querySelector('#home-lesson-card').textContent).toContain('Unit 1: The English Alphabet');
+        expect(container.querySelector('#home-lesson-card').textContent).toContain('8 exercises');
+        expect(container.querySelector('#home-lesson-card').textContent).toContain('about 14 min');
+        expect(container.querySelector('#home-talk-card').textContent).toContain('Talk with');
+        expect(container.querySelector('#home-course-card').textContent).toContain('Structured');
+        expect(container.textContent).not.toContain('Ready to practice');
+        expect(container.textContent).not.toContain('Lesson done');
+    });
+
+    it('shows continue lesson state when a lesson draft exists', () => {
+        const container = document.getElementById('screen-container');
+        LangyState.progress.lessonDraft = {
+            textbookId: 'pre_a1_starter',
+            unitId: 1,
+            status: 'in_progress',
+            currentExerciseIdx: 0,
+            totalExercises: 8,
+            correctAnswers: 0,
+            updatedAt: new Date().toISOString(),
+        };
+
+        renderHome(container);
+
+        expect(container.querySelector('#nav-learning').textContent).toContain('Continue lesson');
+        expect(container.querySelector('#home-lesson-card').textContent).toContain('In progress: 1/8');
+    });
 });
 
 describe('DEV LOGIN', () => {

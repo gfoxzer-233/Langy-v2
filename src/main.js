@@ -167,17 +167,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                     LangyState.user.firstSpeakingScenarioId = 'coffee';
                 }
 
+                // Backfill firstLessonCompleted for existing users
+                if (typeof LangyState.user.firstLessonCompleted !== 'boolean') {
+                    LangyState.user.firstLessonCompleted = (LangyState.progress.lessonHistory || []).length > 0;
+                }
+
                 const isFirstJourney =
                     LangyState.user?.hasCompletedOnboarding && LangyState.user?.firstSessionCompleted === false;
+                const userConfidence = LangyState.user?.confidenceLevel;
+                const hasCompletedAnyLesson =
+                    LangyState.user?.firstLessonCompleted === true ||
+                    (LangyState.progress.lessonHistory || []).length > 0;
+                const isTrueBeginner = (userConfidence === 'zero' || userConfidence === 'basic') &&
+                    (LangyState.progress.lessonHistory || []).length === 0;
 
-                if (isFirstJourney) {
+                if (isFirstJourney && !isTrueBeginner && !hasCompletedAnyLesson) {
+                    // Intermediate/advanced: resume speaking-first flow
                     const scenario = LangyState.user.firstSpeakingScenarioId || 'coffee';
                     ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
                     ScreenState.set('talkScenario', scenario);
                     ScreenState.set('firstTalkSession', !LangyState.user.firstSpeakingScenarioStarted);
+                    ScreenState.set('guidedSpeaking', true);
                     ScreenState.set('talkView', 'call');
                     startRoute = 'talk';
                 } else {
+                    // Beginners go to home (lesson-first CTA)
+                    // Returning users also go to home
                     startRoute = 'home';
                 }
             }

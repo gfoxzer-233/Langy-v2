@@ -3538,4 +3538,208 @@ Methodology: ${tb.methodology || ''}${bbStr}${canDoStr}${objStr}${unitCtx}${meth
     }
 };
 
+function normalizeLangyEnglishCurriculum(curriculum) {
+    const lessonStages = [
+        'objective',
+        'quick_review',
+        'context',
+        'explanation',
+        'guided_practice',
+        'productive_practice',
+        'adaptive_repair',
+        'mastery_check',
+        'result',
+    ];
+    const editorialStatuses = ['draft', 'validated', 'needs_editorial_review', 'approved'];
+    const difficultyByLevel = {
+        'Pre-A1': 1,
+        A1: 1,
+        A2: 2,
+        B1: 3,
+        B2: 4,
+        C1: 5,
+        C2: 5,
+    };
+
+    const slug = value => {
+        const raw = String(value || 'skill')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+        return raw.slice(0, 52) || 'skill';
+    };
+
+    const unique = values => [...new Set(values.filter(Boolean))];
+
+    const inferObjective = (textbook, unit, unitIndex) => {
+        if (unit.objective) return unit.objective;
+        if (unit.unitType === 'review') {
+            return `Consolidate ${textbook.cefr} skills and prove readiness to continue.`;
+        }
+        const canDo = Array.isArray(textbook.canDo)
+            ? textbook.canDo[Math.min(unitIndex, textbook.canDo.length - 1)]
+            : '';
+        const basis = unit.desc || canDo || `Use ${unit.title} in level-appropriate English`;
+        return basis.trim().replace(/\.$/, '') + '.';
+    };
+
+    const inferSkillIds = (textbook, unit) => {
+        const level = slug(textbook.cefr || textbook.level || 'english');
+        const grammarSkills = (unit.grammar || []).slice(0, 3).map(topic => `${level}.grammar.${slug(topic)}`);
+        const vocabSkills = (unit.vocab || unit.vocabulary || []).slice(0, 2).map(topic => `${level}.vocab.${slug(topic)}`);
+        return unique([
+            `${level}.unit_${unit.id}.objective`,
+            `${level}.${slug(unit.unitType || 'lesson')}.${slug(unit.title)}`,
+            ...grammarSkills,
+            ...vocabSkills,
+        ]);
+    };
+
+    const expectedAnswer = exercise => {
+        const data = exercise.data || exercise.widgetData || {};
+        switch (exercise.type || exercise.widgetType) {
+            case 'fill-bubble':
+            case 'read-answer':
+                return Array.isArray(data.options) && Number.isInteger(data.correct) ? data.options[data.correct] : '';
+            case 'image-choice':
+                return Array.isArray(data.options) && Number.isInteger(data.correct) ? data.options[data.correct]?.label : '';
+            case 'match-pairs':
+                return Array.isArray(data.pairs) ? data.pairs.map(pair => `${pair.left} = ${pair.right}`) : [];
+            case 'speak-aloud':
+                return data.phrase || '';
+            case 'listen-type':
+                return data.text || '';
+            case 'word-shuffle':
+                return Array.isArray(data.correct) ? data.correct.join(' ') : '';
+            case 'type-translation':
+                return data.answer || '';
+            default:
+                return data.answer || '';
+        }
+    };
+
+    const acceptedAnswers = exercise => {
+        const data = exercise.data || exercise.widgetData || {};
+        const expected = expectedAnswer(exercise);
+        if (exercise.type === 'type-translation' && Array.isArray(data.answer)) return data.answer;
+        if (Array.isArray(expected)) return expected;
+        return expected ? [String(expected)] : [];
+    };
+
+    const inferStage = (exercise, exerciseIndex, totalExercises) => {
+        const type = exercise.type || exercise.widgetType;
+        if (exerciseIndex >= Math.max(0, totalExercises - 2)) return 'mastery_check';
+        if (['fill-bubble', 'match-pairs', 'image-choice', 'read-answer'].includes(type) && exerciseIndex < 3) {
+            return 'guided_practice';
+        }
+        return 'productive_practice';
+    };
+
+    const inferMistakeCategory = (exercise, unit) => {
+        const type = exercise.type || exercise.widgetType;
+        if (unit.unitType === 'review') return 'checkpoint';
+        if (type === 'listen-type') return 'listening';
+        if (type === 'speak-aloud') return 'pronunciation';
+        if (type === 'word-shuffle') return 'word_order';
+        if (type === 'type-translation') return 'writing';
+        if (type === 'read-answer') return 'reading';
+        if (type === 'match-pairs' || type === 'image-choice') return 'vocabulary';
+        return (unit.grammar || []).length ? 'grammar' : 'general';
+    };
+
+    curriculum.textbooks
+        .filter(textbook => (textbook.language || 'en') === 'en')
+        .forEach(textbook => {
+            const previousUnits = [];
+            textbook.units.forEach((unit, unitIndex) => {
+                unit.objective = inferObjective(textbook, unit, unitIndex);
+                unit.skillIds = Array.isArray(unit.skillIds) && unit.skillIds.length ? unit.skillIds : inferSkillIds(textbook, unit);
+                unit.prerequisiteUnitIds = Array.isArray(unit.prerequisiteUnitIds)
+                    ? unit.prerequisiteUnitIds
+                    : previousUnits.slice(-2);
+                unit.lessonStages = Array.isArray(unit.lessonStages) && unit.lessonStages.length ? unit.lessonStages : lessonStages.slice();
+                unit.editorialStatus = editorialStatuses.includes(unit.editorialStatus)
+                    ? unit.editorialStatus
+                    : 'needs_editorial_review';
+                unit.reviewStrategy = unit.reviewStrategy || {
+                    source: 'spaced_repetition',
+                    dueAfterDays: [1, 3, 7, 14],
+                    repair: 'variant_practice_after_error',
+                };
+                unit.assessment = unit.assessment || {
+                    passThreshold: 70,
+                    masteryCheckExerciseIndices: (unit.exercises || [])
+                        .map((_, index) => index)
+                        .slice(-2),
+                };
+
+                (unit.exercises || []).forEach((exercise, exerciseIndex) => {
+                    const data = exercise.data || exercise.widgetData || {};
+                    const expected = expectedAnswer(exercise);
+                    const stage = exercise.stage || inferStage(exercise, exerciseIndex, unit.exercises.length);
+                    const skillId = exercise.skillId || unit.skillIds[Math.min(exerciseIndex, unit.skillIds.length - 1)] || unit.skillIds[0];
+                    const baseDifficulty = difficultyByLevel[textbook.cefr] || 3;
+
+                    exercise.id = exercise.id || `${textbook.id}:u${unit.id}:e${exerciseIndex + 1}`;
+                    exercise.cefr = exercise.cefr || textbook.cefr;
+                    exercise.lessonObjective = exercise.lessonObjective || unit.objective;
+                    exercise.skillId = skillId;
+                    exercise.skillIds = Array.isArray(exercise.skillIds) && exercise.skillIds.length ? exercise.skillIds : [skillId];
+                    exercise.stage = stage;
+                    exercise.difficulty = Number.isInteger(exercise.difficulty)
+                        ? exercise.difficulty
+                        : Math.min(5, baseDifficulty + (stage === 'mastery_check' && baseDifficulty < 5 ? 1 : 0));
+                    exercise.expectedAnswer = exercise.expectedAnswer || expected;
+                    exercise.acceptedAnswers = Array.isArray(exercise.acceptedAnswers) && exercise.acceptedAnswers.length
+                        ? exercise.acceptedAnswers
+                        : acceptedAnswers(exercise);
+                    exercise.explanation = exercise.explanation || data.rule || unit.grammar?.[0] || unit.desc || unit.objective;
+                    exercise.mistakeCategory = exercise.mistakeCategory || inferMistakeCategory(exercise, unit);
+                    exercise.reviewStrategy = exercise.reviewStrategy || {
+                        queue: true,
+                        dueAfterDays: stage === 'mastery_check' ? [1, 2, 5, 10] : [1, 3, 7],
+                        repairType: stage === 'mastery_check' ? 'mastery_retest' : 'near_transfer_variant',
+                    };
+                    exercise.vocabularyItem = exercise.vocabularyItem || (unit.vocab || unit.vocabulary || [])[exerciseIndex % Math.max(1, (unit.vocab || unit.vocabulary || []).length)] || '';
+                    exercise.grammarRule = exercise.grammarRule || data.rule || (unit.grammar || [])[0] || '';
+                });
+
+                previousUnits.push(unit.id);
+            });
+        });
+}
+
+normalizeLangyEnglishCurriculum(LangyCurriculum);
+
+LangyCurriculum.getContentCoverage = function getContentCoverage() {
+    return this.textbooks.map(textbook => {
+        const units = textbook.units || [];
+        const exercises = units.flatMap(unit => unit.exercises || []);
+        const stages = {};
+        const types = {};
+        exercises.forEach(exercise => {
+            stages[exercise.stage || 'unknown'] = (stages[exercise.stage || 'unknown'] || 0) + 1;
+            types[exercise.type || exercise.widgetType || 'unknown'] = (types[exercise.type || exercise.widgetType || 'unknown'] || 0) + 1;
+        });
+        return {
+            id: textbook.id,
+            language: textbook.language || 'en',
+            cefr: textbook.cefr,
+            units: units.length,
+            exercises: exercises.length,
+            objectives: units.filter(unit => !!unit.objective).length,
+            skillLinkedExercises: exercises.filter(exercise => !!exercise.skillId).length,
+            editorialStatuses: units.reduce((acc, unit) => {
+                const status = unit.editorialStatus || 'missing';
+                acc[status] = (acc[status] || 0) + 1;
+                return acc;
+            }, {}),
+            stages,
+            types,
+        };
+    });
+};
+
 if (typeof module !== 'undefined') module.exports = { LangyCurriculum };
