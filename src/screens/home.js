@@ -241,12 +241,6 @@ function renderHomeCourseCard(meta) {
     const levelProgress = getLevelProgress(textbook);
     const trackColor = tc.trackColor || '#10B981';
     const langName = typeof LangyTarget !== 'undefined' && LangyTarget.displayName ? LangyTarget.displayName(lang) : tc.nativeName;
-    const features = [
-        i18n('home.course_feature_cefr'),
-        i18n('home.course_feature_grammar'),
-        i18n('home.course_feature_vocab'),
-        i18n('home.course_feature_tutor'),
-    ];
 
     return `
         <section class="home-course-card" id="home-course-card" style="--track-color:${trackColor};" aria-labelledby="home-course-title">
@@ -259,9 +253,6 @@ function renderHomeCourseCard(meta) {
                     </div>
                     <p>${i18n('home.course_track_desc')}</p>
                 </div>
-            </div>
-            <div class="home-course-card__features">
-                ${features.map(feature => `<span>${feature}</span>`).join('')}
             </div>
             <div class="home-course-card__progress">
                 <div>
@@ -685,8 +676,6 @@ function renderHome(container) {
     });
 
     // Mascot tap → bounce reaction + speech bubble, then learning
-    let mascotTapCount = 0;
-
     // Signature phrases come FIRST, then generic
     const mascotId = LangyState.mascot.selected || 0;
     const signaturePhrases = {
@@ -705,7 +694,6 @@ function renderHome(container) {
     let usedSignature = false;
 
     container.querySelector('#mascot-tap-zone')?.addEventListener('click', () => {
-        mascotTapCount++;
         const img = container.querySelector('#mascot-img');
         const bubble = container.querySelector('#mascot-bubble');
         const bubbleText = container.querySelector('#mascot-bubble-text');
@@ -749,16 +737,6 @@ function renderHome(container) {
                     }, 300);
                 }, 2000)
             );
-        }
-
-        // On second tap → go to Langy Talk
-        if (mascotTapCount >= 2) {
-            mascotTapCount = 0;
-            ScreenState.set('talkMascot', mascotId); // Pre-select current mascot
-            ScreenState.remove('talkView'); // Start at selection screen
-            const actionCards = container.querySelectorAll('.action-card');
-            Anim.flyOut([...actionCards]);
-            setTimeout(() => Router.navigate('talk'), 500);
         }
     });
 

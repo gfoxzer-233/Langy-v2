@@ -80,7 +80,6 @@ const LangyConfig = Object.freeze({
     NAV_ROUTES: [
         'home',
         'results',
-        'talk',
         'profile',
         'shop',
         'textbooks',

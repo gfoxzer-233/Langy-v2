@@ -131,6 +131,7 @@ const Router = {
                 try {
                     renderFn(container);
                 } catch (e) {
+                    console.error(`[Router] Screen '${hash}' crashed:`, e);
                     if (typeof LangyLogger !== 'undefined') {
                         LangyLogger.error('Router.handleRoute', `Screen '${hash}' crashed`, e);
                     }
@@ -166,7 +167,6 @@ const Router = {
     _navTabs: [
         { route: 'home', icon: 'home', labelKey: 'nav.home' },
         { route: 'results', icon: 'barChart', labelKey: 'nav.learn' },
-        { route: 'talk', icon: 'messageCircle', labelKey: 'nav.talk' },
         { route: 'profile', icon: 'user', labelKey: 'nav.profile' },
     ],
 

@@ -96,6 +96,11 @@ describe('Home information architecture', () => {
         expect(container.querySelector('#home-talk-open')).toBeInstanceOf(HTMLButtonElement);
         expect(container.querySelectorAll('.home-talk-option')).toHaveLength(0);
         expect(container.querySelector('#home-course-card').textContent).toContain('Structured');
+        expect(container.querySelector('#home-course-card').textContent).toContain('CEFR-aligned structured English track');
+        expect(container.querySelector('#home-course-card').textContent).not.toContain('CEFR curriculum A1-C2');
+        expect(container.querySelector('#home-course-card').textContent).not.toContain('Grammar-aware coaching');
+        expect(container.querySelector('#home-course-card').textContent).not.toContain('Vocabulary progression');
+        expect(container.querySelector('#home-course-card').textContent).not.toContain('Tutor-led speaking');
         expect(container.textContent).not.toContain('Ready to practice');
         expect(container.textContent).not.toContain('Lesson done');
     });
@@ -146,6 +151,23 @@ describe('Home information architecture', () => {
         expect(ScreenState.get('guidedSpeaking')).toBe(false);
         expect(ScreenState.get('talkView')).toBe('call');
         expect(navSpy).toHaveBeenCalledWith('talk');
+    });
+
+    it('does not open Talk from bottom nav or mascot taps', () => {
+        const container = document.getElementById('screen-container');
+        const navSpy = vi.spyOn(Router, 'navigate').mockImplementation(() => {});
+
+        Router._updateBottomNav('home');
+        const routes = [...document.querySelectorAll('#bottom-nav .bottom-nav__tab')].map(tab => tab.dataset.route);
+        expect(routes).toEqual(['home', 'results', 'profile']);
+        expect(document.querySelector('#bottom-nav [data-route="talk"]')).toBeNull();
+
+        renderHome(container);
+        click(container.querySelector('#mascot-tap-zone'));
+        click(container.querySelector('#mascot-tap-zone'));
+
+        expect(navSpy).not.toHaveBeenCalledWith('talk');
+        expect(container.querySelector('#home-talk-open')).toBeInstanceOf(HTMLButtonElement);
     });
 
     it('keeps Homework as a single Home entry and shows pending count as a badge', () => {
