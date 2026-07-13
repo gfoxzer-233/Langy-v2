@@ -115,6 +115,59 @@ describe('Home information architecture', () => {
         expect(container.querySelector('#nav-learning').textContent).toContain('Continue lesson');
         expect(container.querySelector('#home-lesson-card').textContent).toContain('In progress: 1/8');
     });
+
+    it('keeps Homework as a single Home entry and shows pending count as a badge', () => {
+        const container = document.getElementById('screen-container');
+        LangyState.progress.lessonHistory = [{ title: 'The English Alphabet', score: 100, date: '2026-07-13' }];
+        LangyState.homework.current = [{ id: 'hw-1', title: 'Alphabet writing', source: 'lesson', unitId: 1 }];
+        LangyState.progress.skills = {
+            vocabulary: 70,
+            grammar: 70,
+            listening: 70,
+            speaking: 70,
+            writing: 0,
+        };
+
+        renderHome(container);
+
+        const homeworkMatches = container.textContent.match(/\bHomework\b/g) || [];
+        expect(homeworkMatches).toHaveLength(1);
+        expect(container.querySelector('#nav-homework')).toBeInstanceOf(HTMLButtonElement);
+        expect(container.querySelector('#nav-homework .action-card__badge').textContent).toBe('1');
+        expect(container.querySelector('.next-action-card')?.textContent || '').not.toContain('Homework');
+        expect([...container.querySelectorAll('.next-action-alt')].map(el => el.textContent).join(' ')).not.toContain('Homework');
+    });
+
+    it('wires Home buttons to their routes with semantic button elements', () => {
+        const container = document.getElementById('screen-container');
+        const navSpy = vi.spyOn(Router, 'navigate').mockImplementation(() => {});
+
+        renderHome(container);
+
+        [
+            ['nav-homework', 'homework'],
+            ['nav-tests', 'tests'],
+            ['nav-results', 'results'],
+            ['nav-daily', 'daily'],
+            ['nav-duels', 'duels'],
+            ['nav-events', 'events'],
+            ['nav-inventory', 'inventory'],
+            ['nav-shop', 'shop'],
+            ['home-profile', 'profile'],
+            ['home-course-map', 'progress'],
+        ].forEach(([id, route]) => {
+            const button = container.querySelector(`#${id}`);
+            expect(button).toBeInstanceOf(HTMLButtonElement);
+            click(button);
+            expect(navSpy).toHaveBeenLastCalledWith(route);
+        });
+
+        click(container.querySelector('#coin-langy'));
+        expect(navSpy).toHaveBeenLastCalledWith('donation', { plan: 'langy_pack' });
+
+        click(container.querySelector('#coin-dangy'));
+        expect(navSpy).toHaveBeenLastCalledWith('donation', { plan: 'dangy_pack' });
+    });
 });
 
 describe('DEV LOGIN', () => {

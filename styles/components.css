@@ -240,6 +240,9 @@
 
 /* ---- Coins ---- */
 .coin {
+    appearance: none;
+    color: var(--text);
+    font-family: var(--font);
     display: inline-flex;
     align-items: center;
     gap: var(--sp-2);
@@ -250,6 +253,11 @@
     font-weight: var(--fw-bold);
     box-shadow: var(--shadow-xs);
     border: 1px solid var(--border-light);
+    cursor: pointer;
+}
+
+.coin:active {
+    transform: scale(0.95);
 }
 
 .coin__icon {

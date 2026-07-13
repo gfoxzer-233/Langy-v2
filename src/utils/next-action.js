@@ -51,13 +51,19 @@ const NextAction = (() => {
 
     // ─── Core recommendation logic ───
 
-    function recommend(lang = 'en') {
+    const grammarMode = MODES.find(mode => mode.id === 'grammar');
+    if (grammarMode) grammarMode.route = 'grammar';
+    const listeningMode = MODES.find(mode => mode.id === 'listening');
+    if (listeningMode) listeningMode.route = 'listening';
+
+    function recommend(lang = 'en', options = {}) {
         const skills = _getSkills();
         const weakSpots = _getWeakSpots();
         const pendingHw = _getPendingHomework();
         const talkCount = _getTalkCount();
         const lessons = _getLessonHistory();
         const sessions = _getRecentSessions();
+        const excludedModes = new Set(options.excludeModes || []);
 
         const candidates = [];
 
@@ -187,13 +193,15 @@ const NextAction = (() => {
             }
         }
 
+        const visibleCandidates = candidates.filter(candidate => !excludedModes.has(candidate.mode.id));
+
         // Sort by priority (highest first)
-        candidates.sort((a, b) => b.priority - a.priority);
+        visibleCandidates.sort((a, b) => b.priority - a.priority);
 
         // Return top recommendation, or null
-        if (candidates.length === 0) return null;
+        if (visibleCandidates.length === 0) return null;
 
-        const top = candidates[0];
+        const top = visibleCandidates[0];
         return {
             route: top.mode.route,
             icon: top.mode.icon,
@@ -203,7 +211,7 @@ const NextAction = (() => {
             meta: top.meta || null,
             priority: top.priority,
             // Also expose runner-up for richer UI
-            alternatives: candidates.slice(1, 3).map(c => ({
+            alternatives: visibleCandidates.slice(1, 3).map(c => ({
                 route: c.mode.route,
                 icon: c.mode.icon,
                 label: c.mode.label,
@@ -214,8 +222,8 @@ const NextAction = (() => {
     }
 
     // ─── Render: compact CTA card ───
-    function renderCard(lang = 'en') {
-        const rec = recommend(lang);
+    function renderCard(lang = 'en', options = {}) {
+        const rec = recommend(lang, options);
         if (!rec) return '';
 
         const reasonText = rec.reason[lang] || rec.reason.en;
@@ -234,10 +242,10 @@ const NextAction = (() => {
         const accentColor = signalColors[rec.signal] || 'var(--primary)';
 
         let html = `
-        <div class="next-action-card" data-route="${rec.route}" ${rec.meta?.tag ? `data-focus-tag="${rec.meta.tag}"` : ''}
-            style="padding:var(--sp-3) var(--sp-4); border-left:3px solid ${accentColor};
+        <button type="button" class="next-action-card" data-route="${rec.route}" ${rec.meta?.tag ? `data-focus-tag="${rec.meta.tag}"` : ''}
+            style="padding:var(--sp-3) var(--sp-4); border:0; border-left:3px solid ${accentColor};
             background:${accentColor}08; border-radius:var(--radius-sm); cursor:pointer;
-            display:flex; align-items:center; gap:var(--sp-3); margin-top:var(--sp-2);">
+            display:flex; align-items:center; gap:var(--sp-3); margin-top:var(--sp-2); width:100%; text-align:left; color:inherit; font:inherit;">
             <span style="font-size:20px; flex-shrink:0;">${rec.icon}</span>
             <div style="flex:1; min-width:0;">
                 <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:${accentColor}; display:flex; align-items:center; gap:4px; margin-bottom:2px;">
@@ -247,7 +255,7 @@ const NextAction = (() => {
                 <div style="font-size:10px; color:var(--text-tertiary); margin-top:1px; line-height:1.4;">${reasonText}</div>
             </div>
             <span style="color:var(--text-tertiary); font-size:12px; flex-shrink:0;">${LangyIcons.arrowRight}</span>
-        </div>`;
+        </button>`;
 
         // Alternative suggestions (compact)
         if (rec.alternatives.length > 0) {
@@ -256,12 +264,12 @@ const NextAction = (() => {
                 const altLabel = alt.label[lang] || alt.label.en;
                 const altColor = signalColors[alt.signal] || 'var(--text-tertiary)';
                 html += `
-                <div class="next-action-alt" data-route="${alt.route}"
-                    style="flex:1; padding:var(--sp-2); background:var(--bg-alt); border-radius:var(--radius-sm);
-                    cursor:pointer; text-align:center; font-size:10px;">
+                <button type="button" class="next-action-alt" data-route="${alt.route}"
+                    style="flex:1; padding:var(--sp-2); background:var(--bg-alt); border:0; border-radius:var(--radius-sm);
+                    cursor:pointer; text-align:center; font-size:10px; color:inherit; font:inherit;">
                     <div style="font-size:14px; margin-bottom:2px;">${alt.icon}</div>
                     <div style="color:${altColor}; font-weight:var(--fw-semibold);">${altLabel}</div>
-                </div>`;
+                </button>`;
             });
             html += `</div>`;
         }

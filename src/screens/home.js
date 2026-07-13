@@ -137,7 +137,7 @@ function renderHomeLessonCard(meta) {
                 <span>${LangyIcons.target} ${meta.exerciseCount} ${i18n('learn.exercises')}</span>
                 <span>${LangyIcons.clock} ${formatHomeText('home.lesson_about_minutes', { minutes: meta.minutes })}</span>
             </div>
-            <button id="nav-learning" class="btn btn--primary btn--xl btn--full home-learning-card__button">
+            <button type="button" id="nav-learning" class="btn btn--primary btn--xl btn--full home-learning-card__button">
                 ${LangyIcons.bookOpen} ${buttonLabel}
             </button>
         </section>
@@ -166,7 +166,7 @@ function renderHomeTalkCard(meta, recommendedScenario) {
             <p class="home-learning-card__goal">${i18n('home.talk_subtitle')}</p>
             <div class="home-talk-options" data-recommended-scenario="${recommendedScenario || 'coffee'}">
                 ${options.map(option => `
-                    <button class="home-talk-option ${option.disabled ? 'home-talk-option--disabled' : ''}" data-talk-mode="${option.mode}" ${option.disabled ? 'disabled' : ''}>
+                    <button type="button" class="home-talk-option ${option.disabled ? 'home-talk-option--disabled' : ''}" data-talk-mode="${option.mode}" ${option.disabled ? 'disabled' : ''}>
                         ${option.icon} <span>${option.label}</span>
                     </button>
                 `).join('')}
@@ -216,7 +216,7 @@ function renderHomeCourseCard(meta) {
                     ${i18n('home.current_unit')}: ${escapeHTML(meta?.title || i18n('learn.next_lesson'))}
                 </div>
             </div>
-            <button class="home-course-card__map" id="home-course-map">
+            <button type="button" class="home-course-card__map" id="home-course-map">
                 ${LangyIcons.map} ${i18n('home.view_course_map')}
             </button>
         </section>
@@ -342,16 +342,16 @@ function buildContinuityCard() {
 
     // Recommended next action — cross-mode intelligence
     if (typeof NextAction !== 'undefined') {
-        html += NextAction.renderCard(lang);
+        html += NextAction.renderCard(lang, { excludeModes: ['homework'] });
     } else {
-        html += `<div class="cont-recommend" data-route="${weakest.route}" style="display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); margin-top:var(--sp-2); background:rgba(59,130,246,0.04); border-radius:var(--radius-sm); cursor:pointer;">
+        html += `<button type="button" class="cont-recommend" data-route="${weakest.route}" style="width:100%; border:0; color:inherit; font:inherit; text-align:left; display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); margin-top:var(--sp-2); background:rgba(59,130,246,0.04); border-radius:var(--radius-sm); cursor:pointer;">
         <span style="font-size:16px;">${weakest.icon}</span>
         <div style="flex:1;">
             <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:var(--primary);">${LangyIcons.arrowRight} ${{ en: 'Suggested next', ru: 'Рекомендуем', es: 'Recomendado' }[lang]}</div>
             <div style="font-size:var(--fs-xs); font-weight:var(--fw-semibold);">${{ en: `Practice ${weakest.label.en}`, ru: `Практикуйте ${weakest.label.ru}`, es: `Practica ${weakest.label.es}` }[lang]} (${weakVal}%)</div>
         </div>
         <span style="color:var(--text-tertiary); font-size:12px;">${LangyIcons.arrowRight}</span>
-    </div>`;
+    </button>`;
     }
 
     html += `</div>`;
@@ -391,26 +391,30 @@ function renderHome(container) {
         ? firstScenario
         : nextScenarioByGoal[user.goal] || 'coffee';
     const activeLessonMeta = getActiveLessonMeta();
+    const pendingHomeworkCount = LangyState.homework?.current?.length || 0;
+    const homeworkBadge = pendingHomeworkCount > 0
+        ? `<span class="action-card__badge" aria-label="${pendingHomeworkCount} pending homework">${pendingHomeworkCount}</span>`
+        : '';
 
     container.innerHTML = `
         <div class="screen screen--no-pad home">
             <!-- Top Bar -->
             <div class="home__topbar">
                 <div class="home__coins">
-                    <div class="coin" id="coin-langy" style="cursor:pointer; transition:transform 0.2s;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
+                    <button type="button" class="coin" id="coin-langy" aria-label="Buy Langy coins">
                         <div class="coin__icon coin__icon--gold" style="color:white; font-size:12px;">${LangyIcons.coins}</div>
                         <span id="langy-count">${currencies.langy}</span>
                         <span style="color:var(--primary); font-weight:var(--fw-bold); margin-left:var(--sp-1);">+</span>
-                    </div>
-                    <div class="coin" id="coin-dangy" style="cursor:pointer; transition:transform 0.2s;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
+                    </button>
+                    <button type="button" class="coin" id="coin-dangy" aria-label="Buy Dangy crystals">
                         <div class="coin__icon coin__icon--silver" style="color:white; font-size:12px;">${LangyIcons.diamond}</div>
                         <span id="dangy-count">${currencies.dangy}</span>
                         <span style="color:var(--primary); font-weight:var(--fw-bold); margin-left:var(--sp-1);">+</span>
-                    </div>
+                    </button>
                 </div>
-                <div class="header-stat" id="home-profile" title="Profile" style="width:40px;height:40px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;font-weight:var(--fw-black);font-size:var(--fs-lg);">
+                <button type="button" class="header-stat" id="home-profile" title="Profile" aria-label="Open profile" style="width:40px;height:40px;border:0;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;font-weight:var(--fw-black);font-size:var(--fs-lg);">
                 ${(user.name || 'U')[0].toUpperCase()}
-            </div>
+            </button>
             </div>
 
             <!-- Hero Stage -->
@@ -428,7 +432,7 @@ function renderHome(container) {
                         <span id="mascot-bubble-text"></span>
                     </div>
                     <!-- Tap zone -->
-                    <div style="position:absolute; inset:0; z-index:10; cursor:pointer;" title="Tap to Talk!" id="mascot-tap-zone"></div>
+                    <button type="button" style="position:absolute; inset:0; z-index:10; cursor:pointer; border:0; background:transparent;" title="Tap to Talk!" aria-label="Talk with mascot" id="mascot-tap-zone"></button>
                 </div>
                 <!-- Mascot identity -->
                 <div class="home__mascot-name">
@@ -466,18 +470,18 @@ function renderHome(container) {
                 <div class="home__section">
                     <div class="home__section-label">${LangyIcons.bookOpen} ${{ en: 'Learn', ru: 'Учиться', es: 'Aprender' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
                     <div class="home__actions">
-                        <div class="action-card ${!user.hasCompletedPlacement ? 'action-card--locked' : ''}" id="nav-homework">
+                        <button type="button" class="action-card ${!user.hasCompletedPlacement ? 'action-card--locked' : ''}" id="nav-homework" aria-disabled="${!user.hasCompletedPlacement}" aria-label="${i18n('home.homework')}">
                             <div class="action-card__icon action-card__icon--purple">${LangyIcons.book}</div>
-                            <div class="action-card__title">${i18n('home.homework')} ${!user.hasCompletedPlacement ? LangyIcons.lock : ''}</div>
-                        </div>
-                        <div class="action-card ${!user.hasCompletedPlacement ? 'action-card--locked' : ''}" id="nav-tests">
+                            <div class="action-card__title">${i18n('home.homework')} ${homeworkBadge} ${!user.hasCompletedPlacement ? LangyIcons.lock : ''}</div>
+                        </button>
+                        <button type="button" class="action-card ${!user.hasCompletedPlacement ? 'action-card--locked' : ''}" id="nav-tests" aria-disabled="${!user.hasCompletedPlacement}" aria-label="${i18n('home.tests')}">
                             <div class="action-card__icon action-card__icon--green">${LangyIcons.fileText}</div>
                             <div class="action-card__title">${i18n('home.tests')} ${!user.hasCompletedPlacement ? LangyIcons.lock : ''}</div>
-                        </div>
-                        <div class="action-card ${!user.hasCompletedPlacement ? 'action-card--locked' : ''}" id="nav-results">
+                        </button>
+                        <button type="button" class="action-card ${!user.hasCompletedPlacement ? 'action-card--locked' : ''}" id="nav-results" aria-disabled="${!user.hasCompletedPlacement}" aria-label="Results">
                             <div class="action-card__icon action-card__icon--blue">${LangyIcons.barChart}</div>
                             <div class="action-card__title">${{ en: 'Results', ru: 'Результаты', es: 'Resultados' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']} ${!user.hasCompletedPlacement ? LangyIcons.lock : ''}</div>
-                        </div>
+                        </button>
                     </div>
                 </div>
 
@@ -485,18 +489,18 @@ function renderHome(container) {
                 <div class="home__section">
                     <div class="home__section-label">${LangyIcons.zap} ${{ en: 'Activities', ru: 'Активности', es: 'Actividades' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
                     <div class="home__actions">
-                        <div class="action-card" id="nav-duels">
+                        <button type="button" class="action-card" id="nav-duels" aria-label="Duels">
                             <div class="action-card__icon action-card__icon--red">${LangyIcons.swords}</div>
                             <div class="action-card__title">${{ en: 'Duels', ru: 'Дуэли', es: 'Duelos' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
-                        </div>
-                        <div class="action-card" id="nav-events">
+                        </button>
+                        <button type="button" class="action-card" id="nav-events" aria-label="Events">
                             <div class="action-card__icon action-card__icon--violet">${LangyIcons.sparkles}</div>
                             <div class="action-card__title">${{ en: 'Events', ru: 'События', es: 'Eventos' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
-                        </div>
-                        <div class="action-card ${!user.hasCompletedPlacement ? 'action-card--locked' : ''}" id="nav-daily">
+                        </button>
+                        <button type="button" class="action-card ${!user.hasCompletedPlacement ? 'action-card--locked' : ''}" id="nav-daily" aria-disabled="${!user.hasCompletedPlacement}" aria-label="${i18n('home.daily')}">
                             <div class="action-card__icon action-card__icon--gold">${LangyIcons.target}</div>
                             <div class="action-card__title">${i18n('home.daily')} ${!user.hasCompletedPlacement ? LangyIcons.lock : ''}</div>
-                        </div>
+                        </button>
                     </div>
                 </div>
 
@@ -504,14 +508,14 @@ function renderHome(container) {
                 <div class="home__section">
                     <div class="home__section-label">${LangyIcons.trophy} ${{ en: 'Rewards', ru: 'Награды', es: 'Recompensas' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
                     <div class="home__actions home__actions--two">
-                        <div class="action-card" id="nav-inventory">
+                        <button type="button" class="action-card" id="nav-inventory" aria-label="Inventory">
                             <div class="action-card__icon action-card__icon--gold">${LangyIcons.briefcase}</div>
                             <div class="action-card__title">${{ en: 'Inventory', ru: 'Инвентарь', es: 'Inventario' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
-                        </div>
-                        <div class="action-card" id="nav-shop">
+                        </button>
+                        <button type="button" class="action-card" id="nav-shop" aria-label="Shop">
                             <div class="action-card__icon action-card__icon--blue">${LangyIcons.shoppingBag}</div>
                             <div class="action-card__title">${{ en: 'Shop', ru: 'Магазин', es: 'Tienda' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
-                        </div>
+                        </button>
                     </div>
                 </div>
             </div>
