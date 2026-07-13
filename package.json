@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "validate": "npm run validate:curriculum && npm run lint && npm run test",
-    "validate:curriculum": "node scripts/validate-curriculum.mjs"
+    "validate:curriculum": "node scripts/validate-curriculum.mjs",
+    "inventory:production": "node scripts/production-inventory.mjs"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

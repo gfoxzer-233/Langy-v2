@@ -1,0 +1,212 @@
+{
+  "updatedAt": "2026-07-13T12:29:57.5692318+03:00",
+  "stage": "stage-0-inventory",
+  "status": "completed",
+  "repository": {
+    "root": "C:\\Users\\chura\\AppData\\Local\\Temp\\langy-audit-20260713-013504\\Langy",
+    "branch": "codex/langy-phase3-commercial-core",
+    "head": "2a16ef0",
+    "dirtyBeforeStage0": [
+      "src/screens/daily.js",
+      "src/screens/donation.js",
+      "src/screens/profile.js",
+      "src/screens/results.js",
+      "src/screens/subscription.js",
+      "src/screens/talk.js",
+      "src/utils/animations.js",
+      "src/utils/state.js",
+      "src/data/vocab-banks.js.bak",
+      "tests/qa-matrix.js"
+    ]
+  },
+  "completedTasks": [
+    "Checked git status and preserved pre-existing dirty files.",
+    "Added scripts/production-inventory.mjs.",
+    "Added npm run inventory:production.",
+    "Captured curriculum counts and validator result.",
+    "Checked Phase 1, Phase 2 and Phase 3 report presence.",
+    "Identified legacy monolithic curriculum and vocab bank files.",
+    "Ran static button and placeholder audit.",
+    "Ran npm run validate.",
+    "Ran npm run build.",
+    "Created LANGY_PRODUCTION_WORKLOG.md.",
+    "Created langy-production-state.json."
+  ],
+  "changedFiles": [
+    "package.json",
+    "scripts/production-inventory.mjs",
+    "LANGY_PRODUCTION_WORKLOG.md",
+    "langy-production-state.json"
+  ],
+  "phaseStatus": {
+    "LANGY_AUDIT.md": "missing in active root",
+    "LANGY_PHASE1_REPORT.md": "present",
+    "LANGY_PHASE2_REPORT.md": "missing",
+    "LANGY_PHASE3_REPORT.md": "present"
+  },
+  "curriculumCounts": {
+    "textbooks": 9,
+    "units": 108,
+    "exercises": 956,
+    "languages": {
+      "en": {
+        "textbooks": 7,
+        "units": 97,
+        "exercises": 887,
+        "levels": {
+          "Pre-A1": {
+            "units": 6,
+            "exercises": 31
+          },
+          "A1": {
+            "units": 18,
+            "exercises": 153
+          },
+          "A2": {
+            "units": 16,
+            "exercises": 129
+          },
+          "B1": {
+            "units": 16,
+            "exercises": 142
+          },
+          "B2": {
+            "units": 15,
+            "exercises": 173
+          },
+          "C1": {
+            "units": 14,
+            "exercises": 156
+          },
+          "C2": {
+            "units": 12,
+            "exercises": 103
+          }
+        }
+      },
+      "es": {
+        "textbooks": 1,
+        "units": 3,
+        "exercises": 16
+      },
+      "ar": {
+        "textbooks": 1,
+        "units": 8,
+        "exercises": 53
+      }
+    },
+    "exerciseTypes": {
+      "fill-bubble": 502,
+      "match-pairs": 91,
+      "speak-aloud": 110,
+      "listen-type": 62,
+      "word-shuffle": 88,
+      "type-translation": 103
+    },
+    "unitEditorialStatuses": {
+      "needs_editorial_review": 97,
+      "missing": 11
+    }
+  },
+  "validationResults": {
+    "inventoryProduction": {
+      "command": "npm run inventory:production",
+      "status": "passed"
+    },
+    "validate": {
+      "command": "npm run validate",
+      "status": "passed",
+      "curriculum": {
+        "valid": true,
+        "errors": 0,
+        "warnings": 0
+      },
+      "lint": {
+        "errors": 0,
+        "warnings": 53
+      },
+      "tests": {
+        "filesPassed": 3,
+        "testsPassed": 66
+      },
+      "notes": [
+        "Test stderr includes expected negative-path logs from resilience tests."
+      ]
+    },
+    "build": {
+      "command": "npm run build",
+      "status": "passed",
+      "warnings": [
+        "Vite reports that legacy non-module scripts in index.html cannot be bundled."
+      ]
+    }
+  },
+  "legacyCurriculum": {
+    "contentRootExists": false,
+    "activeFiles": [
+      "src/data/curriculum.js",
+      "src/data/vocab-banks.js",
+      "src/data/vocab-banks-ar.js",
+      "src/data/vocab-banks-es.js"
+    ],
+    "untrackedBackup": "src/data/vocab-banks.js.bak",
+    "legacyScripts": [
+      "src/scripts/clean_all_emojis.cjs",
+      "src/scripts/clean_final.cjs",
+      "src/scripts/replace_emojis.cjs",
+      "scripts/expand-ar-es.cjs",
+      "scripts/expand-ar-es-2.cjs",
+      "scripts/expand-ar-es-3.cjs",
+      "scripts/gen-ar-es-banks.cjs",
+      "scripts/gen-phrases-a1.cjs",
+      "scripts/migrate-vocab.cjs"
+    ]
+  },
+  "deadButtonAudit": {
+    "buttonsScanned": 175,
+    "openCandidates": [
+      {
+        "file": "src/utils/coach-intel.js",
+        "line": 268,
+        "id": "coach-focus-next",
+        "note": "Rendered in utility, handled in src/screens/talk.js when that screen owns the DOM."
+      },
+      {
+        "file": "src/utils/coach-intel.js",
+        "line": 308,
+        "id": "coach-practice-profile",
+        "note": "Rendered in utility, handled in src/screens/profile.js when that screen owns the DOM."
+      },
+      {
+        "file": "src/utils/coach-intel.js",
+        "line": 445,
+        "id": "coach-practice-summary",
+        "note": "Rendered in utility, handled in src/screens/talk.js when that screen owns the DOM."
+      }
+    ],
+    "manualReviewLikelyHandled": [
+      "src/screens/grammar.js:91 level selector via [data-level]",
+      "src/screens/home.js:839 onboarding tooltip via .onboarding-tooltip__btn",
+      "src/screens/learning.js:897 summary-finish dynamic class parser false positive",
+      "src/screens/profile.js:170 premium banner parent click",
+      "src/screens/subscription.js:275 plan-card parent click",
+      "src/screens/subscription.js:299 plan-card parent click"
+    ],
+    "fakeOrPlaceholderRisks": [
+      "src/screens/auth.js social login coming soon handlers",
+      "src/screens/profile.js premium plans coming soon fallback",
+      "src/screens/inventory.js GLB model placeholder",
+      "src/utils/ai.js mock/offline response fallback",
+      "src/main.js fake hardcoded streak data migration comments"
+    ]
+  },
+  "blockers": [
+    "LANGY_PHASE2_REPORT.md is missing from the active root.",
+    "LANGY_AUDIT.md is missing from the active root.",
+    "The app still uses a legacy global-script architecture that Vite cannot bundle cleanly.",
+    "Course and vocabulary content are monolithic and not versioned course packs.",
+    "97 English units need editorial review and 11 non-English units have missing unit editorial status.",
+    "Existing unrelated dirty files are present and must not be overwritten without inspection."
+  ],
+  "exactNextTask": "Stage 1: introduce a versioned course/content architecture next to the legacy curriculum, define metadata and loader contracts, then route the existing monolithic curriculum through the adapter without changing current app behavior."
+}
