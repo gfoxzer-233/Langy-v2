@@ -234,24 +234,29 @@ function openHomeTalkModal(recommendedScenario, launchTalkFromHome) {
 
 function renderHomeCourseCard(meta) {
     const tc = typeof LangyTarget !== 'undefined' ? LangyTarget.current : null;
-    if (!tc || !tc.featured) return '';
+    if (!tc) return '';
 
     const lang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
     const textbook = meta?.textbook || (typeof LangyCurriculum !== 'undefined' ? LangyCurriculum.getActive() : null);
     const levelProgress = getLevelProgress(textbook);
     const trackColor = tc.trackColor || '#10B981';
-    const langName = typeof LangyTarget !== 'undefined' && LangyTarget.displayName ? LangyTarget.displayName(lang) : tc.nativeName;
+    const targetCode = tc.code || (typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en');
+    const display = {
+        en: { flag: '🇬🇧', name: 'English', desc: 'Structured English track' },
+        es: { flag: '🇪🇸', name: 'Español', desc: 'Spanish for first real conversations' },
+        ar: { flag: '🇸🇦', name: 'العربية', desc: 'Script-first Modern Standard Arabic' },
+    }[targetCode] || { flag: tc.flag, name: tc.nativeName, desc: tc.tagline?.en || i18n('home.course_track_desc') };
 
     return `
         <section class="home-course-card" id="home-course-card" style="--track-color:${trackColor};" aria-labelledby="home-course-title">
             <div class="home-course-card__top">
-                <span class="home-course-card__flag">${tc.flag}</span>
+                <span class="home-course-card__flag">${display.flag}</span>
                 <div>
                     <div class="home-course-card__title-row">
-                        <h3 id="home-course-title">${escapeHTML(langName)}</h3>
+                        <h3 id="home-course-title">${escapeHTML(display.name)}</h3>
                         <span>${i18n('home.course_structured')}</span>
                     </div>
-                    <p>${i18n('home.course_track_desc')}</p>
+                    <p>${escapeHTML(display.desc)}</p>
                 </div>
             </div>
             <div class="home-course-card__progress">
@@ -268,6 +273,30 @@ function renderHomeCourseCard(meta) {
                 ${LangyIcons.map} ${i18n('home.view_course_map')}
             </button>
         </section>
+    `;
+}
+
+function renderHomeLanguageSwitcher() {
+    const current = typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en';
+    const languages = [
+        { code: 'en', flag: '🇬🇧', label: 'English' },
+        { code: 'es', flag: '🇪🇸', label: 'Español' },
+        { code: 'ar', flag: '🇸🇦', label: 'العربية', dir: 'rtl' },
+    ];
+
+    return `
+        <div class="home-language-switcher" role="group" aria-label="Study language">
+            ${languages.map(item => `
+                <button type="button"
+                        class="home-language-switcher__btn ${current === item.code ? 'home-language-switcher__btn--active' : ''}"
+                        data-home-language="${item.code}"
+                        dir="${item.dir || 'ltr'}"
+                        aria-pressed="${current === item.code}">
+                    <span>${item.flag}</span>
+                    <span>${escapeHTML(item.label)}</span>
+                </button>
+            `).join('')}
+        </div>
     `;
 }
 
@@ -409,6 +438,8 @@ function buildContinuityCard() {
 function renderHome(container) {
     const { currencies, streakData, user } = LangyState;
     const lang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
+    const targetCode = typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en';
+    const targetDir = typeof LangyTarget !== 'undefined' ? LangyTarget.direction : 'ltr';
     if (typeof user.firstSessionCompleted !== 'boolean') {
         user.firstSessionCompleted = (LangyState.talkHistory || []).length > 0;
     }
@@ -445,7 +476,8 @@ function renderHome(container) {
         : '';
 
     container.innerHTML = `
-        <div class="screen screen--no-pad home">
+        <div class="screen screen--no-pad home home--${escapeHTML(targetCode)}" dir="${targetDir}">
+            <div class="home-language-bg" aria-hidden="true"></div>
             <!-- Top Bar -->
             <div class="home__topbar">
                 <div class="home__coins">
@@ -464,6 +496,7 @@ function renderHome(container) {
                 ${(user.name || 'U')[0].toUpperCase()}
             </button>
             </div>
+            ${renderHomeLanguageSwitcher()}
 
             <!-- Hero Stage -->
             <div class="home__stage">
@@ -583,6 +616,20 @@ function renderHome(container) {
         'home-profile': 'profile',
         'home-course-map': 'progress',
     };
+
+    container.querySelectorAll('[data-home-language]').forEach(button => {
+        button.addEventListener('click', () => {
+            const code = button.dataset.homeLanguage;
+            if (!code || typeof LangyTarget === 'undefined' || !LangyTarget.isSupported(code)) return;
+            if (code === LangyTarget.getCode()) return;
+
+            const ok = LangyTarget.set(code);
+            if (!ok) return;
+            if (typeof LangyDB !== 'undefined') LangyDB.saveProgress().catch(() => {});
+            Anim.showToast(`${button.textContent.trim()} course loaded`);
+            renderHome(container);
+        });
+    });
 
     const launchTalkFromHome = (mode, scenarioOverride) => {
         const talkCard = container.querySelector('#home-talk-card');

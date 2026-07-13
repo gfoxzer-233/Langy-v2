@@ -276,7 +276,7 @@ ${weakAreas.length ? `\nSTUDENT WEAK AREAS (focus extra attention here): ${weakA
 
             if (!response.ok) {
                 const err = await response.text();
-                console.error('OpenRouter API Error:', err);
+                console.warn('AI service unavailable:', err);
                 throw new Error(this.getUnavailableMessage());
             }
 
@@ -314,8 +314,9 @@ ${weakAreas.length ? `\nSTUDENT WEAK AREAS (focus extra attention here): ${weakA
                 return data.choices?.[0]?.message?.content || 'No response from AI.';
             }
         } catch (err) {
-            console.error('AI Chat Error:', err);
-            throw this._normalizeError(err);
+            const normalized = this._normalizeError(err);
+            console.warn('AI temporarily unavailable:', err?.message || normalized.message);
+            throw normalized;
         }
     },
 

@@ -33,8 +33,8 @@ describe('Curriculum validation', () => {
         expect(result.valid).toBe(true);
         expect(result.errors).toEqual([]);
         expect(result.stats.textbooks).toBe(9);
-        expect(result.stats.units).toBe(108);
-        expect(result.stats.exercises).toBe(956);
+        expect(result.stats.units).toBe(137);
+        expect(result.stats.exercises).toBe(1207);
     });
 
     it('enriches every English unit and exercise with learning architecture metadata', () => {
@@ -63,6 +63,136 @@ describe('Curriculum validation', () => {
         expect(preA1.objectives).toBe(6);
         expect(preA1.skillLinkedExercises).toBe(preA1.exercises);
         expect(preA1.stages.mastery_check).toBeGreaterThan(0);
+    });
+
+    it('ships complete Spanish and Arabic Pre-A1 tracks with all widget types', () => {
+        const requiredTypes = [
+            'fill-bubble',
+            'match-pairs',
+            'speak-aloud',
+            'listen-type',
+            'word-shuffle',
+            'type-translation',
+            'read-answer',
+            'image-choice',
+        ];
+
+        ['es', 'ar'].forEach(language => {
+            const textbooks = LangyCurriculum.getTextbooksForLanguage(language);
+            expect(textbooks).toHaveLength(1);
+            const textbook = textbooks[0];
+            expect(textbook.cefr).toBe('Pre-A1');
+            expect(textbook.units).toHaveLength(20);
+
+            textbook.units.forEach((unit, index) => {
+                expect(unit.id).toBe(index + 1);
+                expect(unit.objective).toEqual(expect.any(String));
+                expect(unit.editorialStatus).toBe('validated');
+                expect(unit.exercises).toHaveLength(8);
+                expect(unit.exercises.map(ex => ex.type).sort()).toEqual([...requiredTypes].sort());
+                unit.exercises.forEach(exercise => {
+                    expect(exercise.expectedAnswer).toBeTruthy();
+                    expect(exercise.acceptedAnswers.length).toBeGreaterThan(0);
+                    expect(exercise.reviewStrategy.queue).toBe(true);
+                });
+            });
+        });
+    });
+});
+
+describe('Language onboarding and switching', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        makeContainer();
+        resetState();
+        ScreenState.clear();
+        mockAnim();
+        LangyI18n.currentLang = 'en';
+    });
+
+    it('starts new learners at mandatory study-language selection', () => {
+        const container = document.getElementById('screen-container');
+
+        renderOnboarding(container);
+
+        expect(container.textContent).toContain('What do you want to learn?');
+        expect(container.querySelectorAll('.onboarding__lang-card')).toHaveLength(3);
+        expect(container.querySelector('#onboarding-next').disabled).toBe(true);
+        expect(LangyState.targetLanguage).toBe(null);
+
+        click(container.querySelector('[data-lang="es"]'));
+        click(container.querySelector('#onboarding-next'));
+
+        expect(LangyState.targetLanguage).toBe('es');
+        expect(LangyState.user.targetLanguageConfirmed).toBe(true);
+        expect(LangyCurriculum.getActive().id).toBe('es_pre_a1_foundations');
+        expect(ScreenState.get('onboardingStep')).toBe(3);
+    });
+
+    it('keeps progress separate for English, Spanish, and Arabic', () => {
+        LangyCurriculum.activeTextbookId = 'pre_a1_starter';
+        LangyTarget.set('en', { persist: false });
+        LangyState.progress.currentUnitId = 3;
+        LangyApp.syncCurrentProgressToLanguage();
+
+        LangyTarget.set('es', { persist: false });
+        expect(LangyCurriculum.getActive().id).toBe('es_pre_a1_foundations');
+        expect(LangyState.progress.currentUnitId).toBe(1);
+        LangyState.progress.currentUnitId = 7;
+        LangyApp.syncCurrentProgressToLanguage();
+
+        LangyTarget.set('ar', { persist: false });
+        expect(LangyCurriculum.getActive().id).toBe('ar_pre_a1_foundations');
+        expect(document.documentElement.dir).toBe('rtl');
+        expect(LangyState.progress.currentUnitId).toBe(1);
+        LangyState.progress.currentUnitId = 4;
+        LangyApp.syncCurrentProgressToLanguage();
+
+        LangyTarget.set('es', { persist: false });
+        expect(LangyState.progress.currentUnitId).toBe(7);
+        expect(document.documentElement.dir).toBe('ltr');
+
+        LangyTarget.set('en', { persist: false });
+        expect(LangyState.progress.currentUnitId).toBe(3);
+    });
+
+    it('switches Home content and RTL state with working language buttons', () => {
+        const container = document.getElementById('screen-container');
+        LangyCurriculum.activeTextbookId = 'pre_a1_starter';
+        LangyTarget.set('en', { persist: false });
+        LangyState.user.hasCompletedOnboarding = true;
+        LangyState.user.hasCompletedPlacement = true;
+
+        renderHome(container);
+        expect(container.querySelectorAll('[data-home-language]')).toHaveLength(3);
+        expect(container.querySelector('#home-lesson-card').textContent).toContain('The English Alphabet');
+
+        click(container.querySelector('[data-home-language="es"]'));
+        expect(LangyState.targetLanguage).toBe('es');
+        expect(container.querySelector('#home-lesson-card').textContent).toContain('Spanish sounds');
+        expect(container.querySelector('#home-course-card').textContent).toContain('Español');
+
+        click(container.querySelector('[data-home-language="ar"]'));
+        expect(LangyState.targetLanguage).toBe('ar');
+        expect(document.documentElement.dir).toBe('rtl');
+        expect(container.querySelector('#home-course-card').textContent).toContain('العربية');
+    });
+    it('switches study language from Profile without mixing progress', () => {
+        const container = document.getElementById('screen-container');
+        LangyTarget.set('es', { persist: false });
+        LangyState.user.hasCompletedOnboarding = true;
+        LangyState.user.hasCompletedPlacement = true;
+        LangyState.progress.currentUnitId = 4;
+        LangyApp.syncCurrentProgressToLanguage();
+
+        renderProfile(container);
+        expect(container.querySelectorAll('[data-profile-language]')).toHaveLength(3);
+
+        click(container.querySelector('[data-profile-language="ar"]'));
+        expect(LangyState.targetLanguage).toBe('ar');
+        expect(document.documentElement.dir).toBe('rtl');
+        expect(LangyState.progress.activeTextbookId).toBe('ar_pre_a1_foundations');
+        expect(LangyState.languageProgress.es.currentUnitId).toBe(4);
     });
 });
 
@@ -96,7 +226,7 @@ describe('Home information architecture', () => {
         expect(container.querySelector('#home-talk-open')).toBeInstanceOf(HTMLButtonElement);
         expect(container.querySelectorAll('.home-talk-option')).toHaveLength(0);
         expect(container.querySelector('#home-course-card').textContent).toContain('Structured');
-        expect(container.querySelector('#home-course-card').textContent).toContain('CEFR-aligned structured English track');
+        expect(container.querySelector('#home-course-card').textContent).toContain('Structured English track');
         expect(container.querySelector('#home-course-card').textContent).not.toContain('CEFR curriculum A1-C2');
         expect(container.querySelector('#home-course-card').textContent).not.toContain('Grammar-aware coaching');
         expect(container.querySelector('#home-course-card').textContent).not.toContain('Vocabulary progression');
@@ -232,7 +362,7 @@ describe('DEV LOGIN', () => {
         mockAnim();
     });
 
-    it('logs in through the development shortcut and routes to home', async () => {
+    it('logs in through the development shortcut and routes to language onboarding', async () => {
         const container = document.getElementById('screen-container');
         const navSpy = vi.spyOn(Router, 'navigate').mockImplementation(() => {});
         vi.spyOn(LangyDB, 'register').mockResolvedValue({ email: 'test@example.com' });
@@ -244,7 +374,9 @@ describe('DEV LOGIN', () => {
         for (let i = 0; i < 6; i++) await flush();
 
         expect(LangyDB.login).toHaveBeenCalledWith('test@example.com', '123456');
-        expect(navSpy).toHaveBeenCalledWith('home');
+        expect(navSpy).toHaveBeenCalledWith('onboarding');
+        expect(LangyApp.hasConfirmedTargetLanguage()).toBe(false);
+        expect(ScreenState.get('onboardingStep')).toBe(2);
     });
 });
 

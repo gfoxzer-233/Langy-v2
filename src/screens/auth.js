@@ -142,9 +142,10 @@ function renderAuth(container) {
                 if (typeof toggleDarkMode === 'function') toggleDarkMode(LangyState.settings.darkMode);
                 LangyDB.startAutoSave();
                 Anim.showToast(`Welcome back! ${LangyIcons.check}`);
-                setTimeout(() => Router.navigate('home'), 500);
+                setTimeout(routeAfterLanguageGate, 500);
             } else {
                 await LangyDB.register(name, email, password);
+                requireFreshTargetLanguageChoice();
                 LangyDB.startAutoSave();
                 Anim.showToast(`Account created! ${LangyIcons.check}`);
                 setTimeout(() => Router.navigate('onboarding'), 500);
@@ -174,12 +175,13 @@ function renderAuth(container) {
         }
 
         await LangyDB.login('test@example.com', '123456');
-        LangyState.user.hasCompletedPlacement = true;
+        requireFreshTargetLanguageChoice();
+        LangyState.user.hasCompletedPlacement = false;
         LangyState.user.level = 'B2 Upper-Intermediate';
         LangyState.mascot.selected = 3; // Omar by default for testing
         LangyDB.startAutoSave();
         Anim.showToast(`Logged in as Test User ${LangyIcons.zap}`);
-        Router.navigate('home');
+        Router.navigate('onboarding');
     });
 
     // Stagger animation
@@ -187,6 +189,35 @@ function renderAuth(container) {
         () => Anim.staggerChildren(container, '.input-group, .btn, .divider--text, .auth__social, .auth__footer'),
         100
     );
+}
+
+function routeAfterLanguageGate() {
+    if (typeof LangyApp !== 'undefined' && !LangyApp.hasConfirmedTargetLanguage()) {
+        ScreenState.set('onboardingStep', 2);
+        ScreenState.remove?.('targetLangChoice');
+        Router.navigate('onboarding');
+        return;
+    }
+
+    if (!LangyState.user?.hasCompletedOnboarding) {
+        if (LangyState.targetLanguage) ScreenState.set('targetLangChoice', LangyState.targetLanguage);
+        ScreenState.set('onboardingStep', LangyState.targetLanguage ? 3 : 2);
+        Router.navigate('onboarding');
+        return;
+    }
+
+    Router.navigate('home');
+}
+
+function requireFreshTargetLanguageChoice() {
+    LangyState.targetLanguage = null;
+    if (LangyState.user) {
+        LangyState.user.targetLanguageConfirmed = false;
+        LangyState.user.hasCompletedOnboarding = false;
+    }
+    if (typeof LangyApp !== 'undefined') LangyApp.restoreActiveLanguageState();
+    ScreenState.set('onboardingStep', 2);
+    ScreenState.remove?.('targetLangChoice');
 }
 
 Router.register('auth', renderAuth);

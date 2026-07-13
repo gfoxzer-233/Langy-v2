@@ -5,13 +5,28 @@
    ============================================ */
 
 function renderOnboarding(container) {
-    const rawStep = ScreenState.get('onboardingStep', 1);
+    const needsTargetLanguage =
+        typeof LangyApp !== 'undefined' && typeof LangyApp.hasConfirmedTargetLanguage === 'function'
+            ? !LangyApp.hasConfirmedTargetLanguage()
+            : !LangyState.targetLanguage;
+    const rawStep = ScreenState.get('onboardingStep', needsTargetLanguage ? 2 : 1);
     const TOTAL_STEPS = 6;
     const VISIBLE_STEPS = 5; // App-language step is pre-flow, not counted
     const step = Math.min(Math.max(rawStep, 1), TOTAL_STEPS);
     const lang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
+    const getSelectedTargetCode = () => ScreenState.get('targetLangChoice', LangyState.targetLanguage || null);
 
     if (rawStep !== step) ScreenState.set('onboardingStep', step);
+    if (step > 2) {
+        const selectedTarget = getSelectedTargetCode();
+        const isSupported = typeof LangyTarget !== 'undefined' && LangyTarget.isSupported(selectedTarget);
+        if (!isSupported) {
+            ScreenState.set('onboardingStep', 2);
+            renderOnboarding(container);
+            return;
+        }
+        if (!ScreenState.has('targetLangChoice')) ScreenState.set('targetLangChoice', selectedTarget);
+    }
 
     // ─── Shared pill-step renderer ───
     function renderPillStep(config) {
@@ -176,16 +191,54 @@ function renderOnboarding(container) {
             es: { en: 'Lecciones estructuradas con tutoría IA', es: 'Conversación con contexto cultural', ar: 'Aprende la escritura, luego habla con confianza' },
         };
 
-        const langCards = Object.entries(languages).map(([code, cfg]) => {
+        const languageOrder = ['en', 'es', 'ar'];
+        const cardCopy = {
+            en: {
+                flag: '🇬🇧',
+                title: 'English',
+                label: 'Structured',
+                desc: 'Structured English from beginner to advanced.',
+                path: 'Pre-A1–C2',
+                dir: 'ltr',
+            },
+            es: {
+                flag: '🇪🇸',
+                title: 'Español',
+                label: 'Conversation',
+                desc: 'Spanish for greetings, travel, culture, and daily life.',
+                path: 'Pre-A1–C2',
+                dir: 'ltr',
+            },
+            ar: {
+                flag: '🇸🇦',
+                title: 'العربية',
+                label: 'Script-first',
+                desc: 'Modern Standard Arabic with letters, sounds, and first conversations.',
+                path: 'Pre-A1–C2',
+                dir: 'rtl',
+            },
+        };
+
+        const langCards = languageOrder.filter(code => languages[code]).map(code => {
+            const cfg = languages[code];
             const isSelected = selectedLang === code;
-            const primaryName = (langNames[lang] || langNames.en)[code] || cfg.nativeName;
+            const primaryName = cardCopy[code]?.title || cfg.nativeName || code;
             const nativeName = cfg.nativeName || '';
-            const showSecondary = nativeName && nativeName !== primaryName;
-            const subtitle = (langSubtitles[lang] || langSubtitles.en)[code] || '';
+            const showSecondary = false;
+            const subtitle = cardCopy[code]?.desc || '';
+            const copy = cardCopy[code] || {
+                flag: cfg.flag,
+                title: primaryName,
+                label: '',
+                desc: subtitle,
+                path: 'Pre-A1–C2',
+                dir: cfg.direction || 'ltr',
+            };
 
             return `
                 <button class="onboarding__lang-card ${isSelected ? 'onboarding__lang-card--selected' : ''}"
                         data-lang="${code}"
+                        dir="${copy.dir}"
                         style="
                             display:flex; align-items:center; gap:var(--sp-4);
                             padding:var(--sp-5) var(--sp-4); border-radius:var(--radius-xl, 20px);
@@ -201,14 +254,18 @@ function renderOnboarding(container) {
                         font-size:40px; flex-shrink:0; width:52px; height:52px;
                         display:flex; align-items:center; justify-content:center;
                         background:var(--bg-secondary, rgba(0,0,0,0.04)); border-radius:14px;
-                    ">${cfg.flag}</span>
+                    ">${copy.flag || cfg.flag}</span>
                     <div style="flex:1; min-width:0;">
                         <div style="font-weight:var(--fw-bold); font-size:var(--fs-lg);">
                             ${primaryName}
+                            <span style="font-weight:700; color:var(--primary); font-size:var(--fs-sm);"> · ${copy.label}</span>
                             ${showSecondary ? `<span style="font-weight:400; color:var(--text-secondary); font-size:var(--fs-sm);"> · ${nativeName}</span>` : ''}
                         </div>
                         <div style="font-size:var(--fs-sm); color:var(--text-secondary); margin-top:3px;">
                             ${subtitle}
+                        </div>
+                        <div style="font-size:var(--fs-xs); color:var(--text-muted); margin-top:6px; font-weight:700;">
+                            ${copy.path}
                         </div>
                     </div>
                     ${isSelected ? `<span style="color:var(--primary); flex-shrink:0;">${LangyIcons.check}</span>` : ''}
@@ -249,10 +306,12 @@ function renderOnboarding(container) {
         });
 
         container.querySelector('#onboarding-next').addEventListener('click', () => {
-            const code = ScreenState.get('targetLangChoice', 'en');
-            if (typeof LangyTarget !== 'undefined') LangyTarget.set(code);
-            if (typeof LangyState !== 'undefined') LangyState.targetLanguage = code;
-            if (typeof LangyCurriculum !== 'undefined') LangyCurriculum.targetLanguage = code;
+            const code = ScreenState.get('targetLangChoice', null);
+            if (!code || typeof LangyTarget === 'undefined' || !LangyTarget.isSupported(code)) {
+                Anim.showToast('Choose a language to continue');
+                return;
+            }
+            LangyTarget.set(code, { persist: false });
             ScreenState.set('onboardingStep', 3);
             renderOnboarding(container);
         });
@@ -266,7 +325,7 @@ function renderOnboarding(container) {
     // Language-specific, beginner-friendly motivations.
     // ═══════════════════════════════════════════
     if (step === 3) {
-        const targetCode = ScreenState.get('targetLangChoice', 'en');
+        const targetCode = getSelectedTargetCode();
         const targetCfg = typeof LangyTarget !== 'undefined' ? (LangyTarget.LANGUAGES[targetCode] || {}) : {};
 
         const langNames = {
@@ -326,7 +385,7 @@ function renderOnboarding(container) {
             stateKey: 'intentGoal',
             title: { en: `Why are you learning ${targetName}?`, ru: `Зачем тебе ${targetName}?`, es: `¿Por qué aprendes ${targetName}?` }[lang],
             subtitle: { en: "This helps us focus your learning path", ru: 'Это поможет нам настроить твой путь', es: 'Esto nos ayuda a enfocar tu camino' }[lang],
-            nextStep: 4,
+            nextStep: 5,
             options: goalsByLang[targetCode] || goalsByLang.en,
             onNext(val) {
                 const goalToInterests = {
@@ -347,13 +406,14 @@ function renderOnboarding(container) {
     // Inline mascot selection — compact, warm, personal.
     // ═══════════════════════════════════════════
     if (step === 4) {
-        const targetCode = ScreenState.get('targetLangChoice', 'en');
+        const targetCode = getSelectedTargetCode();
         const selectedTeacher = ScreenState.get('teacherChoice', null);
 
         // Get language-appropriate mascots
-        const mascotIds = typeof TalkEngine !== 'undefined'
+        let mascotIds = typeof TalkEngine !== 'undefined'
             ? TalkEngine.getMascotIdsForLanguage(targetCode)
             : (targetCode === 'ar' ? [3, 4, 5] : [0, 1, 2]);
+        if (!mascotIds.includes(3)) mascotIds = [...mascotIds, 3];
 
         const allMascots = {
             0: { id: 0, name: 'Zendaya', icon: '💜',
@@ -390,11 +450,11 @@ function renderOnboarding(container) {
             });
 
         renderPillStep({
-            stepLabel: `${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 3 / ${VISIBLE_STEPS}`,
+            stepLabel: `${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 4 / ${VISIBLE_STEPS}`,
             stateKey: 'teacherChoice',
             title: { en: 'Meet your tutor', ru: 'Познакомься с репетитором', es: 'Conoce a tu tutor' }[lang],
             subtitle: { en: 'Each tutor has their own personality and teaching style', ru: 'У каждого — свой характер и стиль обучения', es: 'Cada tutor tiene su personalidad y estilo' }[lang],
-            nextStep: 5,
+            nextStep: 6,
             options: teacherOptions,
             onNext(val) {
                 const mascotId = parseInt(val) || 0;
@@ -409,7 +469,7 @@ function renderOnboarding(container) {
     // Beginner-friendly self-assessment. No test, no intimidation.
     // ═══════════════════════════════════════════
     if (step === 5) {
-        const targetCode = ScreenState.get('targetLangChoice', 'en');
+        const targetCode = getSelectedTargetCode();
         const targetCfg = typeof LangyTarget !== 'undefined' ? (LangyTarget.LANGUAGES[targetCode] || {}) : {};
 
         const langNames = {
@@ -420,11 +480,11 @@ function renderOnboarding(container) {
         const targetName = (langNames[lang] || langNames.en)[targetCode] || targetCfg.nativeName || 'this language';
 
         renderPillStep({
-            stepLabel: `${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 4 / ${VISIBLE_STEPS}`,
+            stepLabel: `${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 3 / ${VISIBLE_STEPS}`,
             stateKey: 'intentConfidence',
             title: { en: `How much ${targetName} do you know?`, ru: `Сколько ${targetName} ты знаешь?`, es: `¿Cuánto ${targetName} sabes?` }[lang],
             subtitle: { en: 'No test — just pick what feels right', ru: 'Без теста — просто выбери, что подходит', es: 'Sin prueba — elige lo que sientas' }[lang],
-            nextStep: 6,
+            nextStep: 4,
             options: [
                 { id: 'zero', icon: '🌱',
                     label: { en: 'Complete beginner', ru: 'Полный новичок', es: 'Principiante total' }[lang],
@@ -476,7 +536,7 @@ function renderOnboarding(container) {
     // Shows tutor name. Beginners → lesson. Intermediate → speaking.
     // ═══════════════════════════════════════════
     if (step === 6) {
-        const targetCode = ScreenState.get('targetLangChoice', 'en');
+        const targetCode = getSelectedTargetCode();
         const targetCfg = typeof LangyTarget !== 'undefined' ? (LangyTarget.LANGUAGES[targetCode] || {}) : {};
         const userConfidence = ScreenState.get('intentConfidence', 'intermediate');
         const isBeginner = userConfidence === 'zero' || userConfidence === 'basic';
@@ -525,10 +585,20 @@ function renderOnboarding(container) {
         container.querySelector('#onboarding-finish').addEventListener('click', () => {
             const userGoal = ScreenState.get('intentGoal', 'speak');
             const chosenMascot = LangyState.mascot.selected ?? 0;
+            const targetCode = getSelectedTargetCode();
+
+            if (!targetCode || typeof LangyTarget === 'undefined' || !LangyTarget.isSupported(targetCode)) {
+                ScreenState.set('onboardingStep', 2);
+                renderOnboarding(container);
+                return;
+            }
+
+            LangyTarget.set(targetCode, { persist: false });
 
             ScreenState.clear();
 
             LangyState.user.hasCompletedOnboarding = true;
+            LangyState.user.targetLanguageConfirmed = true;
             LangyState.mascot.selected = chosenMascot;
 
             if (typeof LangyDB !== 'undefined') {

@@ -156,44 +156,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (typeof LangyCurriculum !== 'undefined') {
                     LangyCurriculum.restoreFromState();
                 }
-
-                if (typeof LangyState.user.firstSessionCompleted !== 'boolean') {
-                    LangyState.user.firstSessionCompleted = (LangyState.talkHistory || []).length > 0;
-                }
-                if (typeof LangyState.user.firstSpeakingScenarioStarted !== 'boolean') {
-                    LangyState.user.firstSpeakingScenarioStarted = LangyState.user.firstSessionCompleted;
-                }
-                if (!LangyState.user.firstSpeakingScenarioId) {
-                    LangyState.user.firstSpeakingScenarioId = 'coffee';
+                if (typeof LangyApp !== 'undefined') {
+                    LangyApp.restoreActiveLanguageState();
                 }
 
-                // Backfill firstLessonCompleted for existing users
-                if (typeof LangyState.user.firstLessonCompleted !== 'boolean') {
-                    LangyState.user.firstLessonCompleted = (LangyState.progress.lessonHistory || []).length > 0;
-                }
-
-                const isFirstJourney =
-                    LangyState.user?.hasCompletedOnboarding && LangyState.user?.firstSessionCompleted === false;
-                const userConfidence = LangyState.user?.confidenceLevel;
-                const hasCompletedAnyLesson =
-                    LangyState.user?.firstLessonCompleted === true ||
-                    (LangyState.progress.lessonHistory || []).length > 0;
-                const isTrueBeginner = (userConfidence === 'zero' || userConfidence === 'basic') &&
-                    (LangyState.progress.lessonHistory || []).length === 0;
-
-                if (isFirstJourney && !isTrueBeginner && !hasCompletedAnyLesson) {
-                    // Intermediate/advanced: resume speaking-first flow
-                    const scenario = LangyState.user.firstSpeakingScenarioId || 'coffee';
-                    ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
-                    ScreenState.set('talkScenario', scenario);
-                    ScreenState.set('firstTalkSession', !LangyState.user.firstSpeakingScenarioStarted);
-                    ScreenState.set('guidedSpeaking', true);
-                    ScreenState.set('talkView', 'call');
-                    startRoute = 'talk';
+                const needsTargetLanguage =
+                    typeof LangyApp !== 'undefined' && !LangyApp.hasConfirmedTargetLanguage();
+                if (needsTargetLanguage) {
+                    ScreenState.set('onboardingStep', 2);
+                    startRoute = 'onboarding';
+                } else if (!LangyState.user?.hasCompletedOnboarding) {
+                    if (LangyState.targetLanguage) ScreenState.set('targetLangChoice', LangyState.targetLanguage);
+                    ScreenState.set('onboardingStep', LangyState.targetLanguage ? 3 : 2);
+                    startRoute = 'onboarding';
                 } else {
-                    // Beginners go to home (lesson-first CTA)
-                    // Returning users also go to home
-                    startRoute = 'home';
+
+                    if (typeof LangyState.user.firstSessionCompleted !== 'boolean') {
+                        LangyState.user.firstSessionCompleted = (LangyState.talkHistory || []).length > 0;
+                    }
+                    if (typeof LangyState.user.firstSpeakingScenarioStarted !== 'boolean') {
+                        LangyState.user.firstSpeakingScenarioStarted = LangyState.user.firstSessionCompleted;
+                    }
+                    if (!LangyState.user.firstSpeakingScenarioId) {
+                        LangyState.user.firstSpeakingScenarioId = 'coffee';
+                    }
+
+                    // Backfill firstLessonCompleted for existing users
+                    if (typeof LangyState.user.firstLessonCompleted !== 'boolean') {
+                        LangyState.user.firstLessonCompleted = (LangyState.progress.lessonHistory || []).length > 0;
+                    }
+
+                    const isFirstJourney =
+                        LangyState.user?.hasCompletedOnboarding && LangyState.user?.firstSessionCompleted === false;
+                    const userConfidence = LangyState.user?.confidenceLevel;
+                    const hasCompletedAnyLesson =
+                        LangyState.user?.firstLessonCompleted === true ||
+                        (LangyState.progress.lessonHistory || []).length > 0;
+                    const isTrueBeginner = (userConfidence === 'zero' || userConfidence === 'basic') &&
+                        (LangyState.progress.lessonHistory || []).length === 0;
+
+                    if (isFirstJourney && !isTrueBeginner && !hasCompletedAnyLesson) {
+                        // Intermediate/advanced: resume speaking-first flow
+                        const scenario = LangyState.user.firstSpeakingScenarioId || 'coffee';
+                        ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
+                        ScreenState.set('talkScenario', scenario);
+                        ScreenState.set('firstTalkSession', !LangyState.user.firstSpeakingScenarioStarted);
+                        ScreenState.set('guidedSpeaking', true);
+                        ScreenState.set('talkView', 'call');
+                        startRoute = 'talk';
+                    } else {
+                        // Beginners go to home (lesson-first CTA)
+                        // Returning users also go to home
+                        startRoute = 'home';
+                    }
                 }
             }
         } catch (e) {

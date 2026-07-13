@@ -9,6 +9,7 @@ function renderProgress(container) {
     const { progress, streakData, user } = LangyState;
     const skills = progress.skills || {};
     const userLevel = (user?.level || 'B1').substring(0, 2);
+    const activityIcon = LangyIcons.activity || LangyIcons.barChart || '';
 
     // Skill dimensions with metadata
     const dimensions = [
@@ -141,7 +142,7 @@ function renderProgress(container) {
             <!-- Activity Stats -->
             <div style="padding: 0 var(--sp-5) var(--sp-4);">
                 <h4 style="margin-bottom:var(--sp-3); display:flex; align-items:center; gap:6px; font-size:var(--fs-sm);">
-                    ${LangyIcons.activity} ${{ en: 'Activity', ru: 'Активность', es: 'Actividad' }[lang]}
+                    ${activityIcon} ${{ en: 'Activity', ru: 'Активность', es: 'Actividad' }[lang]}
                 </h4>
                 <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:var(--sp-2);">
                     <div class="card card--flat" style="padding:var(--sp-3); text-align:center;">

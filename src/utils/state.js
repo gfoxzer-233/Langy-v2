@@ -3,8 +3,9 @@
    ============================================ */
 
 const LangyState = {
-    // Target language being studied (read by LangyTarget)
-    targetLanguage: 'en',
+    // Target language being studied (read by LangyTarget).
+    // Null means the learner has not made an explicit study-language choice yet.
+    targetLanguage: null,
 
     // User
     user: {
@@ -17,9 +18,12 @@ const LangyState = {
         avatar: null,
         hasCompletedPlacement: true,
         hasCompletedOnboarding: false,
+        targetLanguageConfirmed: false,
         firstSessionCompleted: false,
         firstSpeakingScenarioStarted: false,
         firstSpeakingScenarioId: null,
+        firstLessonCompleted: false,
+        confidenceLevel: null,
         interests: [],
     },
 
@@ -119,6 +123,7 @@ const LangyState = {
         currentUnit: 'Unit 1: Getting Started',
         lessonHistory: [],
         recentTopics: [],
+        reviewQueue: [],
 
         // Mastery Loop: per-unit results
         // Key = "textbookId:unitId", e.g. "b1_pre_int:3"
@@ -137,6 +142,10 @@ const LangyState = {
             C2: { earned: false, date: null, badge: LangyIcons.medal },
         },
     },
+
+    // Per-language study progress. LangyState.progress always points at the
+    // active language's progress object after a confirmed target-language choice.
+    languageProgress: {},
 
     // Daily Challenge
     dailyChallenge: {
@@ -501,6 +510,199 @@ function getStreakReward(days) {
 
 // Deep copy of initial state for resets
 const DEFAULT_STATE = JSON.parse(JSON.stringify(LangyState));
+const LANGY_TARGET_CODES = ['en', 'es', 'ar'];
+
+function isValidTargetLanguageCode(code) {
+    return LANGY_TARGET_CODES.includes(code);
+}
+
+function cloneStateValue(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function hasConfirmedTargetLanguage() {
+    return isValidTargetLanguageCode(LangyState.targetLanguage) && LangyState.user?.targetLanguageConfirmed === true;
+}
+
+function resolveTextbookForLanguage(code, preferredLevel) {
+    if (!isValidTargetLanguageCode(code) || typeof LangyCurriculum === 'undefined') return null;
+    const textbooks = Array.isArray(LangyCurriculum.textbooks) ? LangyCurriculum.textbooks : [];
+    if (!textbooks.length) return null;
+
+    const languageTextbooks = textbooks.filter(tb => (tb.language || 'en') === code);
+    if (!languageTextbooks.length) return null;
+
+    const level = preferredLevel || LangyState.settings?.languageLevel || 'Pre-A1';
+    return (
+        languageTextbooks.find(tb => tb.id === LangyCurriculum.activeTextbookId) ||
+        languageTextbooks.find(tb => tb.id === LangyState.languageProgress?.[code]?.activeTextbookId) ||
+        languageTextbooks.find(tb => tb.cefr === level) ||
+        languageTextbooks.find(tb => tb.cefr === 'Pre-A1') ||
+        languageTextbooks.find(tb => tb.cefr === 'A1') ||
+        languageTextbooks[0]
+    );
+}
+
+function createLanguageProgress(code) {
+    const progress = cloneStateValue(DEFAULT_STATE.progress);
+    const textbook = resolveTextbookForLanguage(code);
+    const firstUnit = textbook?.units?.[0] || null;
+
+    progress.language = code;
+    progress.activeTextbookId = textbook?.id || null;
+    progress.currentUnitId = firstUnit?.id || 1;
+    progress.currentLessonIdx = 0;
+    progress.currentUnit = firstUnit?.title || 'Unit 1';
+    progress.totalTopics = textbook?.units?.length || progress.totalTopics;
+    progress.topicsCompleted = 0;
+    progress.overall = 0;
+    progress.lessonHistory = [];
+    progress.recentTopics = [];
+    progress.reviewQueue = [];
+    progress.mastery = {};
+
+    return progress;
+}
+
+function mergeProgressShape(existingProgress, code) {
+    const base = createLanguageProgress(code);
+
+    function deepMerge(target, source) {
+        if (!source || typeof source !== 'object') return target;
+        for (const key of Object.keys(source)) {
+            const value = source[key];
+            if (value && typeof value === 'object' && !Array.isArray(value) && target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+                deepMerge(target[key], value);
+            } else if (value !== undefined) {
+                target[key] = value;
+            }
+        }
+        return target;
+    }
+
+    deepMerge(base, existingProgress || {});
+    base.language = code;
+    if (!Array.isArray(base.lessonHistory)) base.lessonHistory = [];
+    if (!Array.isArray(base.recentTopics)) base.recentTopics = [];
+    if (!Array.isArray(base.reviewQueue)) base.reviewQueue = [];
+    if (!base.mastery || typeof base.mastery !== 'object') base.mastery = {};
+
+    const textbook = resolveTextbookForLanguage(code, LangyState.settings?.languageLevel);
+    if (!base.activeTextbookId && textbook) base.activeTextbookId = textbook.id;
+    if (textbook?.units?.length) {
+        base.totalTopics = textbook.units.length;
+        const currentUnit = textbook.units.find(unit => unit.id === base.currentUnitId) || textbook.units[0];
+        base.currentUnitId = currentUnit.id;
+        base.currentUnit = currentUnit.title;
+    }
+
+    return base;
+}
+
+function ensureLanguageProgressStore() {
+    if (!LangyState.languageProgress || typeof LangyState.languageProgress !== 'object' || Array.isArray(LangyState.languageProgress)) {
+        LangyState.languageProgress = {};
+    }
+
+    LANGY_TARGET_CODES.forEach(code => {
+        if (LangyState.languageProgress[code]) {
+            LangyState.languageProgress[code] = mergeProgressShape(LangyState.languageProgress[code], code);
+        }
+    });
+}
+
+function applyTargetLanguageDocumentState(code) {
+    if (typeof document === 'undefined') return;
+
+    const cfg = typeof LangyTarget !== 'undefined' ? LangyTarget.LANGUAGES?.[code] : null;
+    const direction = cfg?.direction || 'ltr';
+    document.documentElement.dir = direction;
+    document.documentElement.dataset.targetLanguage = code || 'none';
+
+    if (document.body?.classList) {
+        LANGY_TARGET_CODES.forEach(langCode => document.body.classList.remove(`langy-target--${langCode}`));
+        if (isValidTargetLanguageCode(code)) document.body.classList.add(`langy-target--${code}`);
+    }
+}
+
+function applyCurriculumLanguageState(code, progress) {
+    if (!isValidTargetLanguageCode(code) || typeof LangyCurriculum === 'undefined') return;
+
+    LangyCurriculum.targetLanguage = code;
+    const textbook =
+        (Array.isArray(LangyCurriculum.textbooks) && LangyCurriculum.textbooks.find(tb => tb.id === progress?.activeTextbookId && (tb.language || 'en') === code)) ||
+        resolveTextbookForLanguage(code, LangyState.settings?.languageLevel);
+
+    if (textbook) {
+        LangyCurriculum.activeTextbookId = textbook.id;
+        progress.activeTextbookId = textbook.id;
+        const currentUnit = textbook.units?.find(unit => unit.id === progress.currentUnitId) || textbook.units?.[0] || null;
+        if (currentUnit) {
+            progress.currentUnitId = currentUnit.id;
+            progress.currentUnit = currentUnit.title;
+            progress.totalTopics = textbook.units.length;
+        }
+        if (LangyState.aiMemory) LangyState.aiMemory.currentTextbookId = textbook.id;
+    }
+}
+
+function syncCurrentProgressToLanguage() {
+    const code = LangyState.targetLanguage;
+    if (!isValidTargetLanguageCode(code) || !LangyState.progress) return false;
+
+    ensureLanguageProgressStore();
+    LangyState.languageProgress[code] = mergeProgressShape(LangyState.progress, code);
+    return true;
+}
+
+function getLanguageProgress(code) {
+    if (!isValidTargetLanguageCode(code)) return null;
+    ensureLanguageProgressStore();
+    if (!LangyState.languageProgress[code]) {
+        LangyState.languageProgress[code] = createLanguageProgress(code);
+    }
+    return LangyState.languageProgress[code];
+}
+
+function activateTargetLanguage(code, options = {}) {
+    if (!isValidTargetLanguageCode(code)) {
+        console.warn(`[LangyState] Unsupported target language: ${code}`);
+        return false;
+    }
+
+    const previous = LangyState.targetLanguage;
+    if (options.saveCurrent !== false && isValidTargetLanguageCode(previous)) {
+        syncCurrentProgressToLanguage();
+    }
+
+    ensureLanguageProgressStore();
+    LangyState.targetLanguage = code;
+    if (!LangyState.user) LangyState.user = {};
+    LangyState.user.targetLanguageConfirmed = true;
+
+    LangyState.languageProgress[code] = mergeProgressShape(LangyState.languageProgress[code] || createLanguageProgress(code), code);
+    LangyState.progress = LangyState.languageProgress[code];
+
+    applyCurriculumLanguageState(code, LangyState.progress);
+    applyTargetLanguageDocumentState(code);
+
+    if (options.persist !== false && typeof LangyDB !== 'undefined') {
+        LangyDB.saveProgress().catch(() => {});
+    }
+
+    return true;
+}
+
+function restoreActiveLanguageState() {
+    ensureLanguageProgressStore();
+    if (hasConfirmedTargetLanguage()) {
+        activateTargetLanguage(LangyState.targetLanguage, { saveCurrent: false, persist: false });
+    } else {
+        LangyState.targetLanguage = null;
+        if (LangyState.user) LangyState.user.targetLanguageConfirmed = false;
+        applyTargetLanguageDocumentState(null);
+    }
+}
 
 // ─── LEVEL UP CHECK ───
 // Call after any XP change to detect level boundaries
@@ -618,6 +820,12 @@ function getStateSnapshot() {
 }
 
 function loadFromSnapshot(data) {
+    data = data || {};
+    const confirmedTargetCode =
+        data.user?.targetLanguageConfirmed === true && isValidTargetLanguageCode(data.targetLanguage)
+            ? data.targetLanguage
+            : null;
+
     function deepMerge(target, source) {
         for (const key of Object.keys(source)) {
             if (
@@ -635,6 +843,19 @@ function loadFromSnapshot(data) {
         }
     }
     deepMerge(LangyState, data);
+
+    if (!confirmedTargetCode) {
+        LangyState.targetLanguage = null;
+        if (!LangyState.user) LangyState.user = {};
+        LangyState.user.targetLanguageConfirmed = false;
+    } else {
+        LangyState.targetLanguage = confirmedTargetCode;
+        LangyState.user.targetLanguageConfirmed = true;
+        if (!LangyState.languageProgress) LangyState.languageProgress = {};
+        if (!LangyState.languageProgress[confirmedTargetCode]) {
+            LangyState.languageProgress[confirmedTargetCode] = mergeProgressShape(data.progress, confirmedTargetCode);
+        }
+    }
 
     // Always keep template content from code (prevents stale cached emojis)
     const fresh = getDefaultState();
@@ -656,6 +877,8 @@ function loadFromSnapshot(data) {
             }
         }
     }
+
+    restoreActiveLanguageState();
 }
 
 function resetState() {
@@ -663,6 +886,7 @@ function resetState() {
     Object.keys(defaults).forEach(key => {
         LangyState[key] = defaults[key];
     });
+    restoreActiveLanguageState();
 }
 
 // ─── NAMESPACE: LangyApp ───
@@ -676,6 +900,12 @@ const LangyApp = {
     getStateSnapshot,
     loadFromSnapshot,
     resetState,
+    isValidTargetLanguageCode,
+    hasConfirmedTargetLanguage,
+    activateTargetLanguage,
+    syncCurrentProgressToLanguage,
+    getLanguageProgress,
+    restoreActiveLanguageState,
 
     // Session & Streak
     recordSession,

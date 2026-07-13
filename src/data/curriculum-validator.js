@@ -25,6 +25,20 @@ const LangyCurriculumValidator = {
         'mastery_check',
         'result',
     ],
+    allowedStages: [
+        'objective',
+        'quick_review',
+        'context',
+        'explanation',
+        'guided_practice',
+        'productive_practice',
+        'adaptive_repair',
+        'listening',
+        'speaking',
+        'reading',
+        'mastery_check',
+        'result',
+    ],
     editorialStatuses: ['draft', 'validated', 'needs_editorial_review', 'approved'],
     mistakeCategories: [
         'grammar',
@@ -81,9 +95,7 @@ const LangyCurriculumValidator = {
                 if (Number.isInteger(unit?.id) && unitIds.has(unit.id)) addError(`${unitPath}.id`, `Duplicate unit id "${unit.id}" in textbook.`);
                 if (Number.isInteger(unit?.id)) unitIds.add(unit.id);
                 if (!this._isNonEmptyString(unit?.title)) addError(`${unitPath}.title`, 'Unit title is required.');
-                if ((textbook.language || 'en') === 'en') {
-                    this._validateEnglishUnitMetadata(textbook, unit, unitPath, addError, priorUnitIds);
-                }
+                this._validateEnglishUnitMetadata(textbook, unit, unitPath, addError, priorUnitIds);
                 if (!Array.isArray(unit?.exercises) || unit.exercises.length === 0) {
                     addWarning(`${unitPath}.exercises`, 'Unit has no exercises.');
                     return;
@@ -154,9 +166,7 @@ const LangyCurriculumValidator = {
                 break;
         }
 
-        if ((context.textbook?.language || 'en') === 'en') {
-            this._validateEnglishExerciseMetadata(exercise, context, addError);
-        }
+        this._validateEnglishExerciseMetadata(exercise, context, addError);
 
         return { valid: errors.length === 0, errors, warnings };
     },
@@ -223,8 +233,8 @@ const LangyCurriculumValidator = {
         if (!Array.isArray(exercise.skillIds) || exercise.skillIds.length === 0) {
             addError(`${prefix}.skillIds`, 'skillIds must contain at least one skill id.');
         }
-        if (!this.requiredEnglishStages.includes(exercise.stage)) {
-            addError(`${prefix}.stage`, `Exercise stage must be one of: ${this.requiredEnglishStages.join(', ')}.`);
+        if (!this.allowedStages.includes(exercise.stage)) {
+            addError(`${prefix}.stage`, `Exercise stage must be one of: ${this.allowedStages.join(', ')}.`);
         }
         if (!Number.isInteger(exercise.difficulty) || exercise.difficulty < 1 || exercise.difficulty > 5) {
             addError(`${prefix}.difficulty`, 'Difficulty must be an integer from 1 to 5.');

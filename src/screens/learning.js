@@ -38,7 +38,8 @@ function renderLearning(container) {
     const EXERCISES_PER_SESSION = Math.max(1, LangyConfig.EXERCISES_PER_LESSON || 8);
     let exercises = [];
 
-    if (typeof ExerciseGenerator !== 'undefined' && activeTb.cefr) {
+    const activeLanguage = activeTb.language || 'en';
+    if (typeof ExerciseGenerator !== 'undefined' && activeTb.cefr && activeLanguage === 'en') {
         // Mix: take 2-3 static unit exercises (if available) + generate the rest dynamically
         const staticExercises = unit.exercises || [];
         const staticCount = Math.min(3, staticExercises.length);
@@ -79,6 +80,44 @@ function renderLearning(container) {
     let qrCorrect = 0;
     let qrAttempts = 0; // Attempts without theory (max 2 before forced theory)
     let qrExercises = [];
+
+    function getReviewAnswer(exercise) {
+        const data = exercise?.widgetData || exercise?.data || {};
+        if (exercise?.expectedAnswer) return exercise.expectedAnswer;
+        if (Array.isArray(exercise?.acceptedAnswers) && exercise.acceptedAnswers.length) return exercise.acceptedAnswers[0];
+        if (Array.isArray(data.answer)) return data.answer.join(' / ');
+        if (typeof data.answer === 'string') return data.answer;
+        if (Array.isArray(data.options) && Number.isInteger(data.correct)) return data.options[data.correct];
+        if (Array.isArray(data.pairs)) return data.pairs.map(pair => `${pair.left} = ${pair.right}`).join('; ');
+        if (Array.isArray(data.correctOrder)) return data.correctOrder.join(' ');
+        if (typeof data.phrase === 'string') return data.phrase;
+        return '';
+    }
+
+    function queueExerciseForReview(exercise, index) {
+        if (!LangyState.progress.reviewQueue || !Array.isArray(LangyState.progress.reviewQueue)) {
+            LangyState.progress.reviewQueue = [];
+        }
+
+        const reviewId = exercise?.id || exercise?.exerciseId || `${activeTb.id}:${unit.id}:${index}`;
+        const exists = LangyState.progress.reviewQueue.some(item => item.reviewId === reviewId);
+        if (exists) return;
+
+        const data = exercise?.widgetData || exercise?.data || {};
+        LangyState.progress.reviewQueue.push({
+            reviewId,
+            textbookId: activeTb.id,
+            unitId: unit.id,
+            language: activeLanguage,
+            type: exercise?.type || exercise?.widgetType || mapExerciseToWidget(exercise),
+            prompt: data.instruction || data.prompt || exercise?.prompt || unit.title,
+            correctAnswer: getReviewAnswer(exercise),
+            explanation: exercise?.explanation || data.rule || unit.grammar?.[0] || '',
+            dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            attempts: 0,
+            createdAt: new Date().toISOString(),
+        });
+    }
 
     function updateLessonDraft(extra = {}) {
         if (mode !== 'lesson') return;
@@ -489,6 +528,7 @@ function renderLearning(container) {
                 if (typeof DeepTutor !== 'undefined') DeepTutor.setEmotion('happy');
             } else {
                 failedExerciseIndices.push(currentExerciseIdx);
+                queueExerciseForReview(exercise, currentExerciseIdx);
                 if (typeof LangyAI !== 'undefined') {
                     const exRule = exercise.widgetData?.rule || exercise.data?.rule || '';
                     LangyAI.recordMistake(
@@ -832,10 +872,16 @@ function renderLearning(container) {
                     if (!_tb) return '';
                     const _l = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
                     const _mastery = LangyState.progress?.mastery || {};
-                    const _passed = _tb.units.filter(u => { const k = _tb.id + ':' + u.id; return _mastery[k] && _mastery[k].passed; }).length;
+                    const _currentLessonKey = activeTb?.id === _tb.id ? `${_tb.id}:${unit.id}` : null;
+                    const _lessonJustPassed = score >= LangyConfig.PASS_THRESHOLD && _currentLessonKey;
+                    const _isPassedUnit = u => {
+                        const k = _tb.id + ':' + u.id;
+                        return (_mastery[k] && _mastery[k].passed) || (_lessonJustPassed && k === _currentLessonKey);
+                    };
+                    const _passed = _tb.units.filter(_isPassedUnit).length;
                     const _total = _tb.units.length;
                     const _pct = Math.round((_passed / _total) * 100);
-                    const _nextUnit = _tb.units.find(u => { const k = _tb.id + ':' + u.id; return !_mastery[k] || !_mastery[k].passed; });
+                    const _nextUnit = _tb.units.find(u => !_isPassedUnit(u));
                     const _tc = LangyTarget.current;
                     const _color = _tc.trackColor || '#D97706';
                     const _pathTitle = _code === 'ar'
@@ -1316,6 +1362,8 @@ function renderLearning(container) {
 
         const historyEntry = {
             id: Date.now(),
+            language: activeLanguage,
+            textbookId: activeTb.id,
             unitId: unit.id,
             title: unit.title,
             score: result.score,
@@ -1372,6 +1420,7 @@ function renderLearning(container) {
             Math.round((LangyState.progress.topicsCompleted / activeTb.units.length) * 100)
         );
 
+        if (typeof LangyApp !== 'undefined') LangyApp.syncCurrentProgressToLanguage();
         if (typeof LangyDB !== 'undefined') LangyDB.saveProgress();
     }
 

@@ -56,7 +56,7 @@ const LangyTarget = {
             ttsLang: 'es-ES',
             sttLang: 'es-ES',
             direction: 'ltr',
-            cefrLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+            cefrLevels: ['Pre-A1', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
             aiTeacherRole: 'Spanish language teacher',
             aiExaminerRole: 'Spanish examiner',
             curriculumId: 'es',
@@ -69,6 +69,19 @@ const LangyTarget = {
             },
             mascotRoster: [0, 1, 3], // Zendaya, Travis, Omar (Matthew stays English-specific)
             skills: ['grammar', 'vocabulary', 'listening', 'speaking', 'reading', 'writing'],
+            featured: true,
+            trackColor: '#E11D48',
+            trackIdentity: { en: 'Conversation', ru: 'Разговорный', es: 'Conversación' },
+            tagline: {
+                en: 'Spanish for first real conversations',
+                ru: 'Испанский для первых живых разговоров',
+                es: 'Español para tus primeras conversaciones reales',
+            },
+            highlights: {
+                en: ['Pronunciation-first start', 'Everyday phrases', 'Useful grammar', 'Speaking with Omar'],
+                ru: ['Старт с произношения', 'Повседневные фразы', 'Полезная грамматика', 'Разговор с Omar'],
+                es: ['Pronunciación primero', 'Frases cotidianas', 'Gramática útil', 'Hablar con Omar'],
+            },
         },
 
         ar: {
@@ -79,7 +92,7 @@ const LangyTarget = {
             ttsLang: 'ar-SA',
             sttLang: 'ar-SA',
             direction: 'rtl',
-            cefrLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+            cefrLevels: ['Pre-A1', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
             aiTeacherRole: 'Arabic language teacher (Modern Standard Arabic)',
             aiExaminerRole: 'Arabic examiner',
             curriculumId: 'ar',
@@ -197,13 +210,19 @@ const LangyTarget = {
     isSupported(code) { return code in this.LANGUAGES; },
 
     /** Set the target language (persists to state) */
-    set(code) {
+    set(code, options = {}) {
         if (!this.isSupported(code)) {
             console.warn(`[LangyTarget] Unsupported language: ${code}`);
             return false;
         }
+
+        if (typeof LangyApp !== 'undefined' && typeof LangyApp.activateTargetLanguage === 'function') {
+            return LangyApp.activateTargetLanguage(code, options);
+        }
+
         if (typeof LangyState !== 'undefined') {
             LangyState.targetLanguage = code;
+            if (LangyState.user) LangyState.user.targetLanguageConfirmed = true;
         }
         if (typeof LangyCurriculum !== 'undefined') {
             LangyCurriculum.targetLanguage = code;
@@ -212,8 +231,14 @@ const LangyTarget = {
         if (typeof document !== 'undefined') {
             const dir = this.LANGUAGES[code].direction || 'ltr';
             document.documentElement.dir = dir;
+            document.documentElement.dataset.targetLanguage = code;
         }
         return true;
+    },
+
+    /** Backward-compatible alias used by older tests/screens. */
+    setLanguage(code, options = {}) {
+        return this.set(code, options);
     },
 
     /** Get curriculum-relevant AI context string for the current language */
@@ -228,3 +253,48 @@ Phonetics: ${bb.phonetics}
 Writing System: ${bb.writingSystem}`;
     },
 };
+
+Object.assign(LangyTarget.LANGUAGES.en, {
+    name: { en: 'English', ru: 'Английский', es: 'Inglés', ar: 'الإنجليزية' },
+    nativeName: 'English',
+    flag: '🇬🇧',
+    tagline: {
+        en: 'Structured English track',
+        ru: 'Структурированный курс английского',
+        es: 'Curso estructurado de inglés',
+    },
+    highlights: {
+        en: ['Pre-A1 to C2 path', 'Grammar in context', 'Vocabulary in lessons', 'Guided speaking'],
+        ru: ['Путь Pre-A1-C2', 'Грамматика в контексте', 'Лексика в уроках', 'Разговорная практика'],
+        es: ['Ruta Pre-A1-C2', 'Gramática en contexto', 'Vocabulario en lecciones', 'Práctica oral guiada'],
+    },
+});
+
+Object.assign(LangyTarget.LANGUAGES.es, {
+    name: { en: 'Spanish', ru: 'Испанский', es: 'Español', ar: 'الإسبانية' },
+    nativeName: 'Español',
+    flag: '🇪🇸',
+    trackIdentity: { en: 'Conversation', ru: 'Разговорный', es: 'Conversación' },
+    tagline: {
+        en: 'Spanish for first real conversations',
+        ru: 'Испанский для первых живых разговоров',
+        es: 'Español para tus primeras conversaciones reales',
+    },
+    highlights: {
+        en: ['Pronunciation-first start', 'Everyday phrases', 'Useful grammar', 'Speaking with Omar'],
+        ru: ['Старт с произношения', 'Повседневные фразы', 'Полезная грамматика', 'Разговор с Omar'],
+        es: ['Pronunciación primero', 'Frases cotidianas', 'Gramática útil', 'Hablar con Omar'],
+    },
+});
+
+Object.assign(LangyTarget.LANGUAGES.ar, {
+    name: { en: 'Arabic', ru: 'Арабский', es: 'Árabe', ar: 'العربية' },
+    nativeName: 'العربية',
+    flag: '🇸🇦',
+    trackIdentity: { en: 'Script-first', ru: 'Сначала письмо', es: 'Escritura primero' },
+    tagline: {
+        en: 'Script-first Modern Standard Arabic',
+        ru: 'Современный арабский: сначала письмо',
+        es: 'Árabe estándar moderno con escritura primero',
+    },
+});

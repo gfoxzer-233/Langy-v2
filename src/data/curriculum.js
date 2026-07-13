@@ -3238,6 +3238,7 @@ const LangyCurriculum = {
             this.activeTextbookId = tb.id;
             if (typeof LangyState !== 'undefined') {
                 LangyState.progress.currentUnitId = 1;
+                LangyState.progress.activeTextbookId = tb.id;
                 LangyState.aiMemory.currentTextbookId = tb.id;
                 // Fix: set correct currentUnit name from actual textbook
                 const firstUnit = tb.units[0];
@@ -3250,6 +3251,7 @@ const LangyCurriculum = {
         this.activeTextbookId = this.textbooks[0].id;
         if (typeof LangyState !== 'undefined') {
             LangyState.progress.currentUnitId = 1;
+            LangyState.progress.activeTextbookId = this.textbooks[0].id;
             LangyState.aiMemory.currentTextbookId = this.textbooks[0].id;
             const firstUnit = this.textbooks[0].units[0];
             if (firstUnit) {
@@ -3260,8 +3262,19 @@ const LangyCurriculum = {
     },
 
     restoreFromState() {
-        if (typeof LangyState !== 'undefined' && LangyState.aiMemory.currentTextbookId) {
-            this.activeTextbookId = LangyState.aiMemory.currentTextbookId;
+        if (typeof LangyState !== 'undefined') {
+            const lang = LangyState.targetLanguage || this.targetLanguage || 'en';
+            this.targetLanguage = lang;
+            const savedId = LangyState.progress?.activeTextbookId || LangyState.aiMemory?.currentTextbookId;
+            const saved = this.textbooks.find(tb => tb.id === savedId && (tb.language || 'en') === lang);
+            if (saved) {
+                this.activeTextbookId = saved.id;
+                return;
+            }
+            const firstForLanguage = this.textbooks.find(tb => (tb.language || 'en') === lang);
+            if (firstForLanguage) {
+                this.activeTextbookId = firstForLanguage.id;
+            }
         }
     },
 
@@ -3711,6 +3724,324 @@ function normalizeLangyEnglishCurriculum(curriculum) {
         });
 }
 
+function installLangyLanguageSprintCurricula(curriculum) {
+    const stages = [
+        'objective',
+        'quick_review',
+        'context',
+        'explanation',
+        'guided_practice',
+        'productive_practice',
+        'adaptive_repair',
+        'listening',
+        'speaking',
+        'reading',
+        'mastery_check',
+        'result',
+    ];
+
+    const stageForType = type => ({
+        'match-pairs': 'guided_practice',
+        'fill-bubble': 'guided_practice',
+        'speak-aloud': 'speaking',
+        'listen-type': 'listening',
+        'word-shuffle': 'productive_practice',
+        'type-translation': 'productive_practice',
+        'read-answer': 'reading',
+        'image-choice': 'mastery_check',
+    }[type] || 'guided_practice');
+
+    const expectedAnswer = exercise => {
+        const data = exercise.data || {};
+        switch (exercise.type) {
+            case 'fill-bubble':
+            case 'read-answer':
+                return Array.isArray(data.options) && Number.isInteger(data.correct) ? data.options[data.correct] : '';
+            case 'image-choice':
+                return Array.isArray(data.options) && Number.isInteger(data.correct) ? data.options[data.correct]?.label : '';
+            case 'match-pairs':
+                return Array.isArray(data.pairs) ? data.pairs.map(pair => `${pair.left} = ${pair.right}`) : [];
+            case 'speak-aloud':
+                return data.phrase || '';
+            case 'listen-type':
+                return data.text || '';
+            case 'word-shuffle':
+                return Array.isArray(data.correct) ? data.correct.join(' ') : '';
+            case 'type-translation':
+                return Array.isArray(data.answer) ? data.answer[0] : data.answer || '';
+            default:
+                return '';
+        }
+    };
+
+    const acceptedAnswers = exercise => {
+        const expected = expectedAnswer(exercise);
+        if (exercise.type === 'type-translation' && Array.isArray(exercise.data?.answer)) return exercise.data.answer;
+        return Array.isArray(expected) ? expected : expected ? [String(expected)] : [];
+    };
+
+    const normalizeExercise = (textbook, unit, exercise, index) => {
+        const expected = expectedAnswer(exercise);
+        const stage = stageForType(exercise.type);
+        const skillBase = `${textbook.language}.${textbook.cefr.toLowerCase().replace('-', '_')}.u${unit.id}`;
+        return {
+            id: `${textbook.id}:u${unit.id}:e${index + 1}`,
+            exerciseId: `${textbook.language}-u${unit.id}-e${index + 1}`,
+            cefr: textbook.cefr,
+            lessonObjective: unit.objective,
+            skillId: `${skillBase}.${exercise.type}`,
+            skillIds: [`${skillBase}.${exercise.type}`],
+            stage,
+            difficulty: unit.id <= 5 ? 1 : unit.id <= 12 ? 2 : 3,
+            expectedAnswer: expected,
+            acceptedAnswers: acceptedAnswers(exercise),
+            explanation: exercise.data?.rule || unit.grammar?.[0] || unit.objective,
+            mistakeCategory: {
+                'listen-type': 'listening',
+                'speak-aloud': 'pronunciation',
+                'word-shuffle': 'word_order',
+                'type-translation': 'writing',
+                'read-answer': 'reading',
+                'image-choice': 'vocabulary',
+                'match-pairs': 'vocabulary',
+                'fill-bubble': 'grammar',
+            }[exercise.type] || 'general',
+            reviewStrategy: {
+                queue: true,
+                dueAfterDays: stage === 'mastery_check' ? [1, 2, 5, 10] : [1, 3, 7],
+                repairType: stage === 'mastery_check' ? 'mastery_retest' : 'near_transfer_variant',
+            },
+            ...exercise,
+        };
+    };
+
+    const makeUnit = (textbook, spec, index) => {
+        const unitId = index + 1;
+        const unit = {
+            id: unitId,
+            title: spec.title,
+            desc: spec.desc,
+            objective: spec.objective,
+            unitType: spec.checkpoint ? 'review' : 'lesson',
+            grammar: spec.grammar,
+            vocab: spec.vocab.map(pair => pair.left),
+            vocabulary: spec.vocab.map(pair => pair.left),
+            lessonStages: stages.slice(),
+            editorialStatus: 'validated',
+            prerequisiteUnitIds: unitId === 1 ? [] : [unitId - 1],
+            reviewStrategy: {
+                source: 'spaced_repetition',
+                dueAfterDays: [1, 3, 7, 14],
+                repair: 'variant_practice_after_error',
+            },
+            assessment: {
+                passThreshold: 70,
+                masteryCheckExerciseIndices: [6, 7],
+            },
+            teachSlides: [
+                { type: 'explain', mascotText: spec.desc, mascotEmotion: 'happy' },
+                { type: 'vocab-intro', mascotText: spec.objective, mascotEmotion: 'happy', words: spec.vocab.map(pair => ({ en: pair.left, ru: pair.right })) },
+                { type: 'tip', mascotText: spec.rule, mascotEmotion: 'encouraging', tipText: spec.rule },
+            ],
+            homework: {
+                prompt: `Review ${spec.title}: write three short examples using ${spec.phrase}.`,
+            },
+            exercises: [],
+        };
+
+        const exercises = [
+            {
+                type: 'match-pairs',
+                data: {
+                    instruction: spec.matchInstruction,
+                    pairs: spec.vocab.slice(0, 4),
+                    rule: spec.rule,
+                },
+            },
+            {
+                type: 'fill-bubble',
+                data: {
+                    instruction: spec.fillInstruction,
+                    sentence: spec.blankSentence,
+                    options: spec.fillOptions,
+                    correct: spec.fillCorrect,
+                    rule: spec.rule,
+                },
+            },
+            {
+                type: 'speak-aloud',
+                data: {
+                    instruction: spec.speakInstruction,
+                    phrase: spec.phrase,
+                    rule: spec.rule,
+                },
+            },
+            {
+                type: 'listen-type',
+                data: {
+                    instruction: spec.listenInstruction,
+                    text: spec.listenText,
+                    hint: spec.listenHint,
+                    rule: spec.rule,
+                },
+            },
+            {
+                type: 'word-shuffle',
+                data: {
+                    instruction: spec.shuffleInstruction,
+                    prompt: spec.shufflePrompt,
+                    words: spec.shuffleWords.slice().reverse(),
+                    correct: spec.shuffleWords,
+                    rule: spec.rule,
+                },
+            },
+            {
+                type: 'type-translation',
+                data: {
+                    instruction: spec.translationInstruction,
+                    sourceText: spec.translationPrompt,
+                    fromLang: 'en',
+                    toLang: textbook.language,
+                    prompt: spec.translationPrompt,
+                    answer: spec.translationAnswers,
+                    hint: spec.translationHint,
+                    rule: spec.rule,
+                },
+            },
+            {
+                type: 'read-answer',
+                data: {
+                    instruction: spec.readInstruction,
+                    passage: spec.readPassage,
+                    question: spec.readQuestion,
+                    options: spec.readOptions,
+                    correct: spec.readCorrect,
+                    rule: spec.rule,
+                },
+            },
+            {
+                type: 'image-choice',
+                data: {
+                    instruction: spec.imageInstruction,
+                    word: spec.imageWord,
+                    options: spec.imageOptions,
+                    correct: spec.imageCorrect,
+                    rule: spec.rule,
+                },
+            },
+        ];
+
+        unit.exercises = exercises.map((exercise, exerciseIndex) => normalizeExercise(textbook, unit, exercise, exerciseIndex));
+        unit.skillIds = unit.exercises.map(exercise => exercise.skillId);
+        return unit;
+    };
+
+    const spanishSpecs = [
+        ['Spanish sounds: a e i o u', 'Hear and say the five stable Spanish vowels.', 'Pronounce basic Spanish vowels and greet with hola.', 'Spanish vowels stay short and stable.', [['a', 'a'], ['e', 'e'], ['i', 'i'], ['o', 'o']], 'Hola', '___, Omar.', ['Hola', 'Adiós', 'Gracias'], 0, ['Hola', 'Omar'], 'Write "hello" in Spanish.', ['Hola'], 'Omar dice: Hola. Ana dice: Hola.', 'What does Ana say?', ['Hola', 'Adiós', 'Gracias'], 0, 'hola', [['👋', 'greeting'], ['☕', 'coffee'], ['🏠', 'house']], 0],
+        ['Buenos días', 'Use day greetings politely.', 'Choose buenos días, buenas tardes, and buenas noches.', 'Buenos agrees in gender with días; buenas with tardes and noches.', [['buenos días', 'good morning'], ['buenas tardes', 'good afternoon'], ['buenas noches', 'good evening'], ['hola', 'hello']], 'Buenos días', 'In the morning: ___', ['Buenas noches', 'Buenos días', 'Adiós'], 1, ['Buenos', 'días'], 'Write "good morning" in Spanish.', ['Buenos días', 'buenos días'], 'Es la mañana. Omar dice: Buenos días.', 'When does Omar say buenos días?', ['in the morning', 'at night', 'when leaving'], 0, 'buenos días', [['🌅', 'morning'], ['🌙', 'night'], ['✈️', 'airport']], 0],
+        ['Goodbye phrases', 'Leave a conversation naturally.', 'Use adiós, hasta luego, and nos vemos.', 'Hasta luego and nos vemos are friendly ways to say see you later.', [['adiós', 'goodbye'], ['hasta luego', 'see you later'], ['nos vemos', 'see you'], ['chao', 'bye']], 'Hasta luego', 'Friendly goodbye: ___', ['Hasta luego', 'Me llamo', 'Gracias'], 0, ['Hasta', 'luego'], 'Write "see you later" in Spanish.', ['Hasta luego', 'hasta luego'], 'Ana se va. Dice: Hasta luego.', 'What is Ana doing?', ['leaving', 'eating', 'sleeping'], 0, 'adiós', [['👋', 'goodbye'], ['🍎', 'apple'], ['📚', 'book']], 0],
+        ['How are you?', 'Ask and answer a simple check-in.', 'Use ¿Cómo estás? and Estoy bien.', 'Spanish question marks open and close a question.', [['¿Cómo estás?', 'How are you?'], ['estoy bien', 'I am well'], ['estoy mal', 'I am bad'], ['gracias', 'thank you']], '¿Cómo estás?', 'Ask: ___', ['Estoy bien', '¿Cómo estás?', 'Adiós'], 1, ['¿Cómo', 'estás?'], 'Write "How are you?" in Spanish.', ['¿Cómo estás?', 'Como estas?', 'cómo estás'], 'Omar pregunta: ¿Cómo estás? Ana responde: Estoy bien.', 'How does Ana feel?', ['well', 'angry', 'hungry'], 0, 'bien', [['😊', 'well'], ['😴', 'tired'], ['🏠', 'home']], 0],
+        ['Checkpoint: greetings', 'Review greetings, goodbyes, and first questions.', 'Handle a first greeting exchange.', 'A greeting exchange uses hello, a check-in, and a goodbye.', [['hola', 'hello'], ['gracias', 'thank you'], ['adiós', 'goodbye'], ['bien', 'well']], 'Hola, ¿cómo estás?', 'Complete: Estoy ___', ['hola', 'bien', 'adiós'], 1, ['Hola,', '¿cómo', 'estás?'], 'Write "I am well" in Spanish.', ['Estoy bien', 'estoy bien'], 'Omar: Hola. Ana: Estoy bien, gracias. Omar: Hasta luego.', 'Which phrase is a goodbye?', ['Hasta luego', 'Estoy bien', 'Gracias'], 0, 'gracias', [['🙏', 'thank you'], ['🌅', 'morning'], ['🏫', 'school']], 0],
+        ['Me llamo', 'Introduce your name.', 'Say Me llamo and ask ¿Cómo te llamas?', 'Me llamo means I call myself; it is the natural way to give your name.', [['me llamo', 'my name is'], ['¿Cómo te llamas?', 'What is your name?'], ['nombre', 'name'], ['Omar', 'Omar']], 'Me llamo Omar', 'My name is Omar: ___ Omar', ['Me llamo', 'Estoy', 'Adiós'], 0, ['Me', 'llamo', 'Omar'], 'Write "My name is Omar" in Spanish.', ['Me llamo Omar', 'me llamo Omar'], 'Ana dice: Me llamo Ana. Omar dice: Me llamo Omar.', 'What is Ana saying?', ['her name', 'goodbye', 'her age'], 0, 'nombre', [['🏷️', 'name'], ['🌮', 'food'], ['🚌', 'bus']], 0],
+        ['Soy estudiante', 'Use soy for identity.', 'Say who you are with soy.', 'Soy is the first-person form of ser for identity and role.', [['soy', 'I am'], ['estudiante', 'student'], ['profesor', 'teacher'], ['persona', 'person']], 'Soy estudiante', 'I am a student: ___ estudiante', ['Soy', 'Estoy', 'Tengo'], 0, ['Soy', 'estudiante'], 'Write "I am a student" in Spanish.', ['Soy estudiante', 'soy estudiante'], 'Omar es profesor. Ana es estudiante.', 'Who is the student?', ['Ana', 'Omar', 'both'], 0, 'estudiante', [['🎓', 'student'], ['☕', 'coffee'], ['🏖️', 'beach']], 0],
+        ['Mucho gusto', 'React politely after introductions.', 'Use Mucho gusto and Encantado.', 'Mucho gusto literally means much pleasure and works in introductions.', [['mucho gusto', 'nice to meet you'], ['encantado', 'delighted'], ['igualmente', 'likewise'], ['amigo', 'friend']], 'Mucho gusto', 'After a name, say: ___', ['Mucho gusto', 'Buenos días', 'Adiós'], 0, ['Mucho', 'gusto'], 'Write "nice to meet you" in Spanish.', ['Mucho gusto', 'mucho gusto'], 'Ana: Me llamo Ana. Omar: Mucho gusto.', 'What does Omar say?', ['nice to meet you', 'good night', 'I am tired'], 0, 'amigo', [['🤝', 'friend'], ['🌧️', 'rain'], ['📱', 'phone']], 0],
+        ['De dónde eres', 'Ask where someone is from.', 'Use ¿De dónde eres? and Soy de...', 'De marks origin: soy de México, soy de España.', [['¿De dónde eres?', 'Where are you from?'], ['soy de', 'I am from'], ['México', 'Mexico'], ['España', 'Spain']], 'Soy de México', 'I am from Spain: Soy de ___', ['México', 'España', 'Omar'], 1, ['Soy', 'de', 'México'], 'Write "I am from Mexico" in Spanish.', ['Soy de México', 'Soy de Mexico', 'soy de México'], 'Omar pregunta: ¿De dónde eres? Ana: Soy de España.', 'Where is Ana from?', ['Spain', 'Mexico', 'Canada'], 0, 'España', [['🇪🇸', 'Spain'], ['🇲🇽', 'Mexico'], ['🇨🇦', 'Canada']], 0],
+        ['Checkpoint: introductions', 'Review name, identity, and origin.', 'Complete a short introduction.', 'Introductions combine name, identity, and origin.', [['me llamo', 'my name is'], ['soy', 'I am'], ['soy de', 'I am from'], ['mucho gusto', 'nice to meet you']], 'Me llamo Ana. Soy estudiante.', 'Nice to meet you: ___', ['Mucho gusto', 'Soy de', 'Me llamo'], 0, ['Me', 'llamo', 'Ana'], 'Write "My name is Ana" in Spanish.', ['Me llamo Ana', 'me llamo Ana'], 'Ana: Me llamo Ana. Soy de México. Mucho gusto.', 'Where is Ana from?', ['Mexico', 'Spain', 'Italy'], 0, 'México', [['🇲🇽', 'Mexico'], ['🇪🇸', 'Spain'], ['🇫🇷', 'France']], 0],
+        ['Numbers 0 to 10', 'Count and recognize basic numbers.', 'Use cero through diez.', 'Spanish numbers are single words from cero to diez.', [['cero', 'zero'], ['uno', 'one'], ['dos', 'two'], ['tres', 'three']], 'Uno, dos, tres', '2 = ___', ['uno', 'dos', 'tres'], 1, ['Uno,', 'dos,', 'tres'], 'Write "one, two, three" in Spanish.', ['Uno, dos, tres', 'uno dos tres'], 'Ana cuenta: uno, dos, tres.', 'Which number comes after dos?', ['tres', 'uno', 'cero'], 0, 'dos', [['2️⃣', 'two'], ['3️⃣', 'three'], ['0️⃣', 'zero']], 0],
+        ['Age with tener', 'Say age with tener.', 'Use Tengo ... años.', 'Spanish uses tener for age: Tengo diez años.', [['tengo', 'I have'], ['años', 'years'], ['diez', 'ten'], ['once', 'eleven']], 'Tengo diez años', 'I am ten: Tengo diez ___', ['años', 'días', 'nombre'], 0, ['Tengo', 'diez', 'años'], 'Write "I am ten years old" in Spanish.', ['Tengo diez años', 'tengo diez años'], 'Omar dice: Tengo once años. Ana dice: Tengo diez años.', 'Who is ten?', ['Ana', 'Omar', 'both'], 0, 'años', [['🎂', 'years old'], ['📚', 'books'], ['☀️', 'sun']], 0],
+        ['Countries and languages', 'Name country and language.', 'Say Hablo español and Soy de...', 'Hablo means I speak.', [['hablo', 'I speak'], ['español', 'Spanish'], ['inglés', 'English'], ['país', 'country']], 'Hablo español', 'I speak Spanish: ___ español', ['Hablo', 'Tengo', 'Soy'], 0, ['Hablo', 'español'], 'Write "I speak Spanish" in Spanish.', ['Hablo español', 'hablo español'], 'Ana habla español. Omar habla inglés.', 'What does Ana speak?', ['Spanish', 'English', 'Arabic'], 0, 'español', [['🗣️', 'Spanish language'], ['🎂', 'age'], ['🏠', 'home']], 0],
+        ['Nationalities', 'Use simple nationality words.', 'Say Soy mexicano/mexicana or español/española.', 'Nationality adjectives often change for masculine and feminine.', [['mexicano', 'Mexican masc.'], ['mexicana', 'Mexican fem.'], ['español', 'Spanish masc.'], ['española', 'Spanish fem.']], 'Soy mexicana', 'Ana says: Soy ___', ['mexicana', 'mexicano', 'inglés'], 0, ['Soy', 'mexicana'], 'Write "I am Mexican" in Spanish.', ['Soy mexicano', 'Soy mexicana', 'soy mexicano', 'soy mexicana'], 'Ana es mexicana. Omar es español.', 'Who is Spanish?', ['Omar', 'Ana', 'both'], 0, 'mexicana', [['🇲🇽', 'Mexican'], ['🇪🇸', 'Spanish'], ['🇯🇵', 'Japanese']], 0],
+        ['Checkpoint: personal info', 'Review numbers, age, country, and language.', 'Give basic personal information.', 'Personal info combines name, age, origin, and language.', [['tengo', 'I have'], ['años', 'years'], ['hablo', 'I speak'], ['soy de', 'I am from']], 'Me llamo Ana. Tengo diez años.', 'I speak Spanish: ___ español', ['Hablo', 'Tengo', 'Me llamo'], 0, ['Tengo', 'diez', 'años'], 'Write "I am from Spain" in Spanish.', ['Soy de España', 'soy de España'], 'Ana: Me llamo Ana. Tengo diez años. Hablo español.', 'What does Ana speak?', ['Spanish', 'French', 'Arabic'], 0, 'diez', [['🔟', 'ten'], ['3️⃣', 'three'], ['7️⃣', 'seven']], 0],
+        ['Estoy bien', 'Describe how you feel.', 'Use estoy with temporary states.', 'Estoy is used for feelings and temporary states.', [['estoy bien', 'I am well'], ['estoy mal', 'I feel bad'], ['cansado', 'tired masc.'], ['cansada', 'tired fem.']], 'Estoy bien', 'I feel bad: Estoy ___', ['bien', 'mal', 'Omar'], 1, ['Estoy', 'bien'], 'Write "I am well" in Spanish.', ['Estoy bien', 'estoy bien'], 'Omar: Estoy cansado. Ana: Estoy bien.', 'Who feels well?', ['Ana', 'Omar', 'both'], 0, 'cansado', [['😴', 'tired'], ['😊', 'well'], ['🏠', 'home']], 0],
+        ['Ser and estar', 'Choose identity or state.', 'Contrast soy and estoy.', 'Use soy for identity; use estoy for temporary state.', [['soy', 'I am identity'], ['estoy', 'I am state'], ['feliz', 'happy'], ['estudiante', 'student']], 'Soy estudiante', 'I am happy now: ___ feliz', ['Soy', 'Estoy', 'Tengo'], 1, ['Estoy', 'feliz'], 'Write "I am a student" in Spanish.', ['Soy estudiante', 'soy estudiante'], 'Ana es estudiante. Hoy está feliz.', 'What is permanent identity here?', ['student', 'happy', 'today'], 0, 'feliz', [['😊', 'happy'], ['🎓', 'student'], ['🌙', 'night']], 0],
+        ['Questions with tú', 'Ask direct questions.', 'Use ¿Tú eres...? and ¿Tú hablas...?', 'Tú marks informal you.', [['tú', 'you'], ['eres', 'you are'], ['hablas', 'you speak'], ['también', 'also']], '¿Tú hablas español?', 'You are Omar: Tú ___ Omar', ['eres', 'soy', 'tengo'], 0, ['¿Tú', 'hablas', 'español?'], 'Write "Do you speak Spanish?" in Spanish.', ['¿Tú hablas español?', 'Tu hablas español?', 'tú hablas español'], 'Omar: ¿Tú hablas español? Ana: Sí, hablo español.', 'Does Ana speak Spanish?', ['yes', 'no', 'not said'], 0, 'tú', [['👉', 'you'], ['👈', 'I'], ['🤝', 'friend']], 0],
+        ['Sí, no, and también', 'Give short answers.', 'Use sí, no, and también.', 'Sí has an accent when it means yes.', [['sí', 'yes'], ['no', 'no'], ['también', 'also'], ['pero', 'but']], 'Sí, yo también', 'Yes: ___', ['Sí', 'Si', 'Pero'], 0, ['Sí,', 'yo', 'también'], 'Write "yes, me too" in Spanish.', ['Sí, yo también', 'Si, yo tambien', 'sí, yo también'], 'Ana habla español. Omar también habla español.', 'Who also speaks Spanish?', ['Omar', 'Ana', 'nobody'], 0, 'sí', [['✅', 'yes'], ['❌', 'no'], ['➕', 'also']], 0],
+        ['Checkpoint: first conversation', 'Review a short first conversation.', 'Introduce yourself and respond to questions.', 'A first conversation can cover greeting, name, origin, and feeling.', [['hola', 'hello'], ['me llamo', 'my name is'], ['estoy bien', 'I am well'], ['también', 'also']], 'Hola, me llamo Omar', 'Complete: Yo ___ hablo español', ['también', 'años', 'nombre'], 0, ['Hola,', 'me', 'llamo', 'Omar'], 'Write "Hello, my name is Omar" in Spanish.', ['Hola, me llamo Omar', 'hola me llamo Omar'], 'Omar: Hola, me llamo Omar. Soy de México. Hablo español.', 'Where is Omar from?', ['Mexico', 'Spain', 'Canada'], 0, 'conversación', [['💬', 'conversation'], ['🎂', 'age'], ['🌃', 'night']], 0],
+    ];
+
+    const arabicSpecs = [
+        ['Arabic direction and alif', 'Start reading right to left and recognize ا.', 'Read right to left and say مرحبًا.', 'Arabic is written from right to left.', [['ا', 'alif'], ['أ', 'hamza on alif'], ['مرحبا', 'hello'], ['يمين', 'right']], 'مرحبًا', 'Hello: ___', ['مرحبًا', 'شكرًا', 'وداعًا'], 0, ['مرحبًا', 'يا', 'عمر'], 'Write "hello" in Arabic.', ['مرحبًا', 'مرحبا'], 'عمر يقول: مرحبًا. ليلى تقول: مرحبًا.', 'What does Layla say?', ['مرحبًا', 'وداعًا', 'نعم'], 0, 'مرحبًا', [['👋', 'hello'], ['☕', 'coffee'], ['🏠', 'house']], 0],
+        ['Letters ب ت ث', 'Recognize three dotted letters.', 'Distinguish ب، ت، ث by dots.', 'Dots change the letter: ب one below, ت two above, ث three above.', [['ب', 'b'], ['ت', 't'], ['ث', 'th'], ['باب', 'door']], 'باب', 'Door: ___', ['باب', 'بيت', 'ثوب'], 0, ['باب', 'كبير'], 'Write "door" in Arabic.', ['باب'], 'هذا باب. الباب كبير.', 'What is big?', ['the door', 'the book', 'the tea'], 0, 'باب', [['🚪', 'door'], ['📚', 'book'], ['🍵', 'tea']], 0],
+        ['Letters ن ي', 'Read similar connected letters.', 'Tell ن and ي apart.', 'ن has one dot above; ي has two dots below.', [['ن', 'n'], ['ي', 'y'], ['أنا', 'I'], ['نعم', 'yes']], 'أنا عمر', 'I am Omar: ___ عمر', ['أنا', 'نعم', 'بيت'], 0, ['أنا', 'عمر'], 'Write "I am Omar" in Arabic.', ['أنا عمر'], 'أنا عمر. أنا طالب.', 'Who is Omar?', ['a student', 'a teacher', 'a door'], 0, 'أنا', [['👤', 'I'], ['✅', 'yes'], ['🏫', 'school']], 0],
+        ['Letters ج ح خ', 'Recognize the three letters with the same shape.', 'Distinguish ج، ح، خ by dot position.', 'ج has a dot below, خ has a dot above, ح has no dot.', [['ج', 'j'], ['ح', 'h'], ['خ', 'kh'], ['جيد', 'good']], 'أنا جيد', 'Good: ___', ['جيد', 'خبز', 'حار'], 0, ['أنا', 'جيد'], 'Write "I am good" in Arabic.', ['أنا جيد'], 'ليلى تقول: أنا جيدة. عمر يقول: أنا جيد.', 'How is Omar?', ['good', 'tired', 'hungry'], 0, 'جيد', [['😊', 'good'], ['🍞', 'bread'], ['🔥', 'hot']], 0],
+        ['Checkpoint: first letters', 'Review direction and first letters.', 'Read and use your first Arabic words.', 'Shape and dots carry meaning in Arabic letters.', [['ا', 'alif'], ['ب', 'b'], ['ت', 't'], ['أنا', 'I']], 'أنا بخير', 'I am fine: أنا ___', ['بخير', 'باب', 'تاء'], 0, ['أنا', 'بخير'], 'Write "I am fine" in Arabic.', ['أنا بخير'], 'أنا عمر. أنا بخير.', 'How does Omar feel?', ['fine', 'sad', 'not said'], 0, 'بخير', [['😊', 'fine'], ['🚪', 'door'], ['📚', 'book']], 0],
+        ['Connecting letters', 'See how letters connect inside words.', 'Recognize beginning, middle, and ending shapes.', 'Most Arabic letters connect to the next letter.', [['بـ', 'b beginning'], ['ـبـ', 'b middle'], ['ـب', 'b ending'], ['بيت', 'house']], 'هذا بيت', 'House: ___', ['بيت', 'باب', 'قلم'], 0, ['هذا', 'بيت'], 'Write "this is a house" in Arabic.', ['هذا بيت'], 'هذا بيت. البيت كبير.', 'What is this?', ['a house', 'a pen', 'a book'], 0, 'بيت', [['🏠', 'house'], ['✏️', 'pen'], ['📘', 'book']], 0],
+        ['Non-connecting د ذ', 'Learn letters that do not connect after themselves.', 'Read د and ذ in short words.', 'د and ذ connect from the right but not to the following letter.', [['د', 'd'], ['ذ', 'dh'], ['درس', 'lesson'], ['ذهب', 'gold']], 'هذا درس', 'Lesson: ___', ['درس', 'ذهب', 'بيت'], 0, ['هذا', 'درس'], 'Write "this is a lesson" in Arabic.', ['هذا درس'], 'هذا درس جديد.', 'What is new?', ['the lesson', 'the house', 'the door'], 0, 'درس', [['📖', 'lesson'], ['🥇', 'gold'], ['🏠', 'house']], 0],
+        ['Letters ر ز', 'Read two more non-connectors.', 'Distinguish ر and ز by dot.', 'ز is like ر with a dot above.', [['ر', 'r'], ['ز', 'z'], ['رز', 'rice'], ['زر', 'button']], 'أريد رز', 'Rice: ___', ['رز', 'زر', 'باب'], 0, ['أريد', 'رز'], 'Write "I want rice" in Arabic.', ['أريد رز'], 'عمر يريد رز. ليلى تريد ماء.', 'What does Omar want?', ['rice', 'water', 'tea'], 0, 'رز', [['🍚', 'rice'], ['💧', 'water'], ['🍵', 'tea']], 0],
+        ['Letters س ش', 'Read س and ش.', 'Use dots to tell س and ش apart.', 'ش is س with three dots above.', [['س', 's'], ['ش', 'sh'], ['شمس', 'sun'], ['سلام', 'peace']], 'السلام عليكم', 'Peace greeting: ___ عليكم', ['السلام', 'شمس', 'بيت'], 0, ['السلام', 'عليكم'], 'Write "peace be upon you" in Arabic.', ['السلام عليكم'], 'عمر يقول: السلام عليكم. ليلى ترد: وعليكم السلام.', 'What is Omar saying?', ['a greeting', 'a number', 'a goodbye'], 0, 'شمس', [['☀️', 'sun'], ['🏠', 'house'], ['📚', 'book']], 0],
+        ['Checkpoint: connected words', 'Review connected and non-connected letters.', 'Read short connected words in context.', 'Arabic words are read as connected letter shapes.', [['بيت', 'house'], ['درس', 'lesson'], ['رز', 'rice'], ['سلام', 'peace']], 'هذا بيت جديد', 'New house: بيت ___', ['جديد', 'رز', 'درس'], 0, ['هذا', 'بيت', 'جديد'], 'Write "this is a new house" in Arabic.', ['هذا بيت جديد'], 'هذا بيت. هذا درس. عمر في البيت.', 'Where is Omar?', ['in the house', 'in the lesson', 'with rice'], 0, 'جديد', [['✨', 'new'], ['🍚', 'rice'], ['📖', 'lesson']], 0],
+        ['Fatha vowel', 'Read the short a sound.', 'Use fatḥa as a short a.', 'Fatḥa is a small mark above the consonant.', [['بَ', 'ba'], ['تَ', 'ta'], ['دَ', 'da'], ['كَتَبَ', 'he wrote']], 'كَتَبَ', 'He wrote: ___', ['كَتَبَ', 'كِتاب', 'باب'], 0, ['هو', 'كَتَبَ'], 'Write "he wrote" in Arabic.', ['كَتَبَ'], 'هو كَتَبَ. هي قَرَأَت.', 'What did he do?', ['wrote', 'read', 'slept'], 0, 'كَتَبَ', [['✍️', 'wrote'], ['📖', 'read'], ['😴', 'slept']], 0],
+        ['Kasra vowel', 'Read the short i sound.', 'Use kasra as a short i.', 'Kasra is written below the consonant.', [['بِ', 'bi'], ['تِ', 'ti'], ['مِن', 'from'], ['في', 'in']], 'أنا في البيت', 'In: ___', ['في', 'من', 'باب'], 0, ['أنا', 'في', 'البيت'], 'Write "I am in the house" in Arabic.', ['أنا في البيت'], 'أنا في البيت. ليلى في المدرسة.', 'Where is Layla?', ['in the school', 'in the house', 'in the market'], 0, 'في', [['📍', 'in'], ['➡️', 'from'], ['🏠', 'house']], 0],
+        ['Damma vowel', 'Read the short u sound.', 'Use ḍamma as a short u.', 'Ḍamma is a small curl above the consonant.', [['بُ', 'bu'], ['تُ', 'tu'], ['كُرسي', 'chair'], ['قُل', 'say']], 'هذا كرسي', 'Chair: ___', ['كرسي', 'بيت', 'كتاب'], 0, ['هذا', 'كرسي'], 'Write "this is a chair" in Arabic.', ['هذا كرسي'], 'هذا كرسي. الكرسي جديد.', 'What is new?', ['the chair', 'the book', 'the house'], 0, 'كرسي', [['🪑', 'chair'], ['📚', 'book'], ['🏠', 'house']], 0],
+        ['Sukun and shadda', 'Read no-vowel and doubled sounds.', 'Recognize sukun and shadda in simple words.', 'Sukun stops the vowel; shadda doubles the consonant.', [['سكون', 'no vowel'], ['شدّة', 'doubling'], ['مدرسة', 'school'], ['مُدَرِّس', 'teacher']], 'هذه مدرسة', 'School: ___', ['مدرسة', 'ماء', 'باب'], 0, ['هذه', 'مدرسة'], 'Write "this is a school" in Arabic.', ['هذه مدرسة'], 'هذه مدرسة. في المدرسة مُدَرِّس.', 'Who is in the school?', ['a teacher', 'a house', 'rice'], 0, 'مدرسة', [['🏫', 'school'], ['💧', 'water'], ['🚪', 'door']], 0],
+        ['Checkpoint: short vowels', 'Review fatḥa, kasra, ḍamma, sukun, and shadda.', 'Read short marked words accurately.', 'Vowel marks guide pronunciation for beginners.', [['فَتحة', 'short a'], ['كَسرة', 'short i'], ['ضَمّة', 'short u'], ['سكون', 'no vowel']], 'أنا في مدرسة', 'Complete: أنا ___ مدرسة', ['في', 'من', 'كرسي'], 0, ['أنا', 'في', 'مدرسة'], 'Write "I am in a school" in Arabic.', ['أنا في مدرسة'], 'أنا في مدرسة. المدرسة كبيرة.', 'How is the school?', ['big', 'small', 'new'], 0, 'كبيرة', [['🏢', 'big'], ['✨', 'new'], ['🪑', 'chair']], 0],
+        ['السلام عليكم', 'Use a common greeting.', 'Say السلام عليكم and answer وعليكم السلام.', 'السلام عليكم is a formal and warm greeting.', [['السلام عليكم', 'peace be upon you'], ['وعليكم السلام', 'and upon you peace'], ['مرحبًا', 'hello'], ['أهلًا', 'welcome']], 'السلام عليكم', 'Greeting: ___', ['السلام عليكم', 'أنا عمر', 'هذا بيت'], 0, ['السلام', 'عليكم'], 'Write "peace be upon you" in Arabic.', ['السلام عليكم'], 'عمر: السلام عليكم. ليلى: وعليكم السلام.', 'What is Layla replying?', ['and upon you peace', 'my name is Layla', 'goodbye'], 0, 'السلام عليكم', [['🤝', 'greeting'], ['🏠', 'house'], ['🍚', 'rice']], 0],
+        ['ما اسمك؟', 'Ask for a name.', 'Use ما اسمك؟ and اسمي...', 'اسم means name; اسمي means my name.', [['ما اسمك؟', 'What is your name?'], ['اسمي', 'my name is'], ['اسم', 'name'], ['عمر', 'Omar']], 'ما اسمك؟', 'My name is Omar: ___ عمر', ['اسمي', 'ما اسمك', 'بيت'], 0, ['ما', 'اسمك؟'], 'Write "What is your name?" in Arabic.', ['ما اسمك؟', 'ما اسمك'], 'عمر: ما اسمك؟ ليلى: اسمي ليلى.', 'What is Layla saying?', ['her name', 'hello', 'goodbye'], 0, 'اسم', [['🏷️', 'name'], ['👋', 'hello'], ['🏫', 'school']], 0],
+        ['أنا من...', 'Say where you are from.', 'Use أنا من...', 'من means from.', [['أنا من', 'I am from'], ['مصر', 'Egypt'], ['السعودية', 'Saudi Arabia'], ['بلد', 'country']], 'أنا من مصر', 'I am from Egypt: أنا من ___', ['مصر', 'بيت', 'درس'], 0, ['أنا', 'من', 'مصر'], 'Write "I am from Egypt" in Arabic.', ['أنا من مصر'], 'ليلى من مصر. عمر من السعودية.', 'Where is Omar from?', ['Saudi Arabia', 'Egypt', 'Spain'], 0, 'مصر', [['🇪🇬', 'Egypt'], ['🇸🇦', 'Saudi Arabia'], ['🇪🇸', 'Spain']], 0],
+        ['تشرفت', 'Respond politely.', 'Use تشرفت after meeting someone.', 'تشرفت means pleased to meet you.', [['تشرفت', 'pleased to meet you'], ['أهلًا', 'welcome'], ['شكرًا', 'thank you'], ['عفوًا', 'you are welcome']], 'تشرفت', 'Thank you: ___', ['شكرًا', 'تشرفت', 'بيت'], 0, ['تشرفت', 'يا', 'ليلى'], 'Write "pleased to meet you" in Arabic.', ['تشرفت'], 'عمر: اسمي عمر. ليلى: تشرفت.', 'What does Layla say?', ['pleased to meet you', 'good night', 'I am from Egypt'], 0, 'شكرًا', [['🙏', 'thank you'], ['🤝', 'pleased'], ['🏠', 'house']], 0],
+        ['Checkpoint: first conversation', 'Review greeting, name, origin, and polite response.', 'Hold a first Arabic introduction.', 'A first conversation combines greeting, name, origin, and polite reply.', [['مرحبًا', 'hello'], ['اسمي', 'my name is'], ['أنا من', 'I am from'], ['تشرفت', 'pleased']], 'مرحبًا، اسمي عمر', 'My name is Layla: ___ ليلى', ['اسمي', 'أنا من', 'تشرفت'], 0, ['مرحبًا،', 'اسمي', 'عمر'], 'Write "Hello, my name is Omar" in Arabic.', ['مرحبًا، اسمي عمر', 'مرحبا اسمي عمر'], 'عمر: مرحبًا، اسمي عمر. أنا من مصر. ليلى: تشرفت.', 'Where is Omar from?', ['Egypt', 'Saudi Arabia', 'Spain'], 0, 'محادثة', [['💬', 'conversation'], ['🙏', 'thank you'], ['🏫', 'school']], 0],
+    ];
+
+    const toSpec = (item, lang, index) => ({
+        title: item[0],
+        desc: item[1],
+        objective: item[2],
+        rule: item[3],
+        vocab: item[4].map(([left, right]) => ({ left, right })),
+        phrase: item[5],
+        blankSentence: item[6],
+        fillOptions: item[7],
+        fillCorrect: item[8],
+        shuffleWords: item[9],
+        translationPrompt: item[10],
+        translationAnswers: item[11],
+        readPassage: item[12],
+        readQuestion: item[13],
+        readOptions: item[14],
+        readCorrect: item[15],
+        imageWord: item[16],
+        imageOptions: item[17].map(([emoji, label]) => ({ emoji, label })),
+        imageCorrect: item[18],
+        matchInstruction: lang === 'ar' ? 'Match Arabic to meaning' : 'Match Spanish to meaning',
+        fillInstruction: 'Choose the correct option',
+        speakInstruction: 'Say the phrase aloud',
+        listenInstruction: 'Listen and type what you hear',
+        listenText: item[5],
+        listenHint: item[5][0],
+        shuffleInstruction: 'Build the sentence',
+        shufflePrompt: lang === 'ar' ? 'Put the Arabic words in order.' : 'Put the Spanish words in order.',
+        translationInstruction: 'Type the translation',
+        translationHint: item[11][0][0],
+        readInstruction: 'Read and answer',
+        imageInstruction: 'Choose the matching meaning',
+        checkpoint: (index + 1) % 5 === 0,
+    });
+
+    const makeTextbook = (language, id, title, subtitle, specs) => {
+        const textbook = {
+            id,
+            language,
+            cefr: 'Pre-A1',
+            level: language === 'ar' ? 'Pre-A1 Arabic Foundations' : 'Pre-A1 Spanish Foundations',
+            title,
+            subtitle,
+            unitCount: 20,
+            estimatedHours: 10,
+            canDo: specs.map(item => item[2]),
+            units: [],
+        };
+        textbook.units = specs.map((item, index) => makeUnit(textbook, toSpec(item, language, index), index));
+        return textbook;
+    };
+
+    const spanish = makeTextbook('es', 'es_pre_a1_foundations', 'Español Foundations', '20 validated first-step lessons for real conversations', spanishSpecs);
+    const arabic = makeTextbook('ar', 'ar_pre_a1_foundations', 'Arabic Script & Conversation Foundations', '20 validated lessons from script to first conversation', arabicSpecs);
+
+    curriculum.textbooks = curriculum.textbooks.filter(textbook => !['es', 'ar'].includes(textbook.language || 'en'));
+    curriculum.textbooks.push(spanish, arabic);
+}
+
+installLangyLanguageSprintCurricula(LangyCurriculum);
 normalizeLangyEnglishCurriculum(LangyCurriculum);
 
 LangyCurriculum.getContentCoverage = function getContentCoverage() {

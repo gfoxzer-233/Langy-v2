@@ -93,6 +93,35 @@ const Router = {
             return;
         }
 
+        // Learning-language gate: logged-in learners must explicitly pick what they study.
+        if (
+            hash !== 'auth' &&
+            hash !== 'onboarding' &&
+            typeof LangyDB !== 'undefined' &&
+            LangyDB.currentUser &&
+            typeof LangyApp !== 'undefined' &&
+            !LangyApp.hasConfirmedTargetLanguage()
+        ) {
+            ScreenState.set('onboardingStep', 2);
+            window.location.hash = 'onboarding';
+            return;
+        }
+
+        if (
+            hash !== 'auth' &&
+            hash !== 'onboarding' &&
+            typeof LangyDB !== 'undefined' &&
+            LangyDB.currentUser &&
+            typeof LangyApp !== 'undefined' &&
+            LangyApp.hasConfirmedTargetLanguage() &&
+            !LangyState.user?.hasCompletedOnboarding
+        ) {
+            ScreenState.set('targetLangChoice', LangyState.targetLanguage);
+            ScreenState.set('onboardingStep', 3);
+            window.location.hash = 'onboarding';
+            return;
+        }
+
         // Run cleanup for previous screen
         if (this.currentRoute && this.currentRoute !== hash) {
             const cleanup = this._cleanupFns[this.currentRoute];

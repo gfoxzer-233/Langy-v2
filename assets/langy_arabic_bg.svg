@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="640" viewBox="0 0 860 640" role="img" aria-label="Arabic course background">
+  <rect width="860" height="640" fill="#ecfdf5"/>
+  <path d="M0 390 C130 350 245 420 375 374 C505 328 610 370 860 318 L860 640 L0 640 Z" fill="#ccfbf1"/>
+  <path d="M0 468 C155 420 302 470 438 428 C575 386 698 420 860 382 L860 640 L0 640 Z" fill="#d1fae5"/>
+  <g fill="#0f766e" opacity=".9">
+    <path d="M94 456 L94 302 C94 244 140 198 198 198 C256 198 302 244 302 302 L302 456 Z"/>
+    <path d="M336 456 L336 276 C336 228 375 190 423 190 C471 190 510 228 510 276 L510 456 Z"/>
+    <path d="M552 456 L552 318 C552 270 591 232 639 232 C687 232 726 270 726 318 L726 456 Z"/>
+  </g>
+  <g fill="#ecfdf5">
+    <path d="M132 456 L132 314 C132 278 162 248 198 248 C234 248 264 278 264 314 L264 456 Z"/>
+    <path d="M370 456 L370 286 C370 256 393 232 423 232 C453 232 476 256 476 286 L476 456 Z"/>
+    <path d="M586 456 L586 328 C586 298 609 274 639 274 C669 274 692 298 692 328 L692 456 Z"/>
+  </g>
+  <g fill="none" stroke="#d4af37" stroke-width="9" stroke-linecap="round" opacity=".72">
+    <path d="M118 186 C156 142 234 142 274 186"/>
+    <path d="M350 178 C382 140 464 140 496 178"/>
+    <path d="M566 220 C604 182 674 182 710 220"/>
+    <path d="M160 108 C250 82 348 88 424 118 C500 148 612 152 724 110"/>
+  </g>
+  <g fill="#134e4a" opacity=".22">
+    <circle cx="178" cy="348" r="8"/>
+    <circle cx="218" cy="348" r="8"/>
+    <circle cx="404" cy="330" r="7"/>
+    <circle cx="444" cy="330" r="7"/>
+    <circle cx="620" cy="360" r="7"/>
+    <circle cx="660" cy="360" r="7"/>
+  </g>
+</svg>

@@ -99,6 +99,30 @@ function buildAchievements() {
         .join('');
 }
 
+function renderProfileStudyLanguageSwitcher() {
+    const current = typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en';
+    const languages = [
+        { code: 'en', flag: '🇬🇧', label: 'English' },
+        { code: 'es', flag: '🇪🇸', label: 'Español' },
+        { code: 'ar', flag: '🇸🇦', label: 'العربية', dir: 'rtl' },
+    ];
+
+    return `
+        <div class="profile-study-language" role="group" aria-label="Study language">
+            ${languages.map(item => `
+                <button type="button"
+                        class="profile-study-language__btn ${current === item.code ? 'profile-study-language__btn--active' : ''}"
+                        data-profile-language="${item.code}"
+                        dir="${item.dir || 'ltr'}"
+                        aria-pressed="${current === item.code}">
+                    <span>${item.flag}</span>
+                    <span>${item.label}</span>
+                </button>
+            `).join('')}
+        </div>
+    `;
+}
+
 function renderProfile(container) {
     const { user, settings, streakData, currencies } = LangyState;
 
@@ -310,6 +334,7 @@ function renderProfile(container) {
                         </div>
                         <div class="profile__option-arrow">${LangyIcons.arrow}</div>
                     </div>
+                    ${renderProfileStudyLanguageSwitcher()}
                 </div>
 
                 <!-- Learning -->
@@ -391,6 +416,19 @@ function renderProfile(container) {
     // Back
     container.querySelector('#profile-back')?.addEventListener('click', () => Router.navigate('home'));
     container.querySelector('#prof-progress')?.addEventListener('click', () => Router.navigate('progress'));
+
+    container.querySelectorAll('[data-profile-language]').forEach(button => {
+        button.addEventListener('click', () => {
+            const code = button.dataset.profileLanguage;
+            if (!code || typeof LangyTarget === 'undefined' || !LangyTarget.isSupported(code)) return;
+            if (code === LangyTarget.getCode()) return;
+            const ok = LangyTarget.set(code);
+            if (!ok) return;
+            if (typeof LangyDB !== 'undefined') LangyDB.saveProgress().catch(() => {});
+            Anim.showToast(`${button.textContent.trim()} course loaded`);
+            renderProfile(container);
+        });
+    });
 
     // Toggles
     function setupToggle(id, key) {
@@ -1106,9 +1144,9 @@ function showSubscription() {
             </div>
 
             <button class="btn btn--primary btn--full" id="activate-premium-btn">
-                ${{ en: 'Start learning faster · $12/mo', ru: 'Учиться быстрее · $12/мес', es: 'Aprende más rápido · $12/mes' }[_lang]}
+                ${{ en: 'Activate Coach — free in beta', ru: 'Активировать Coach — бесплатно в бета', es: 'Activar Coach — gratis en beta' }[_lang]}
             </button>
-            <p style="font-size:var(--fs-xs); color:var(--text-tertiary); margin-top:var(--sp-2);">${LangyIcons.shield} ${{ en: 'Cancel anytime · No commitment', ru: 'Отмена в любой момент · Без обязательств', es: 'Cancela cuando quieras · Sin compromiso' }[_lang]}</p>
+            <p style="font-size:var(--fs-xs); color:var(--text-tertiary); margin-top:var(--sp-2);">${{ en: 'Coach is free for all beta testers. Pricing starts after launch.', ru: 'Coach бесплатен для бета-тестеров. Подписка — после запуска.', es: 'Coach es gratis para beta testers. Los precios empiezan tras el lanzamiento.' }[_lang]}</p>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -1126,7 +1164,7 @@ function showSubscription() {
     overlay.querySelector('#activate-premium-btn').addEventListener('click', () => {
         LangyState.subscription.plan = 'coach';
         if (typeof LangyDB !== 'undefined') LangyDB.saveProgress().catch(() => {});
-        Anim.showToast(`${{ en: 'Coach activated!', ru: 'Coach активирован!', es: '¡Coach activado!' }[_lang]} ${LangyIcons.sparkles}`);
+        Anim.showToast(`${{ en: 'Coach activated! Free during beta.', ru: 'Coach активирован! Бесплатно в бета.', es: '¡Coach activado! Gratis durante la beta.' }[_lang]} ${LangyIcons.sparkles}`);
 
         // Remove the banner from the profile screen
         const banner = document.getElementById('prof-premium-banner');
