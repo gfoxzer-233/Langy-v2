@@ -3,7 +3,8 @@
    ============================================ */
 
 function renderAuth(container) {
-    const isLogin = ScreenState.get('authMode', 'login') !== 'signup';
+    const authMode = ScreenState.get('authMode', 'login');
+    const isLogin = authMode !== 'signup';
     const isDevHost =
         window.location.hostname === 'localhost' ||
         window.location.hostname === '127.0.0.1' ||
@@ -24,7 +25,7 @@ function renderAuth(container) {
 
             <div class="tabs" id="auth-tabs">
                 <button class="tabs__tab ${isLogin ? 'tabs__tab--active' : ''}" data-tab="login">${i18n('auth.login')}</button>
-                <button class="tabs__tab ${!isLogin ? 'tabs__tab--active' : ''}" data-tab="signup">${i18n('auth.register')}</button>
+                <button class="tabs__tab ${authMode === 'signup' ? 'tabs__tab--active' : ''}" data-tab="signup">${i18n('auth.register')}</button>
             </div>
 
             <form class="auth__form" id="auth-form">
@@ -54,16 +55,21 @@ function renderAuth(container) {
                 <div class="auth__error" id="auth-error"></div>
             </form>
 
-            <div class="divider--text">${{ en: 'or continue with', ru: 'или войти через', es: 'o continuar con' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en']}</div>
+            ${
+                isDevHost
+                    ? `
+            <div class="divider--text">development sandbox</div>
 
             <div class="auth__social">
                 <button type="button" class="btn" id="auth-google">
-                    <span>G</span> Google
+                    <span>G</span> Google sandbox
                 </button>
                 <button type="button" class="btn" id="auth-apple">
-                    <span>${LangyIcons.apple || LangyIcons.globe}</span> Apple
+                    <span>${LangyIcons.apple || LangyIcons.globe}</span> Apple sandbox
                 </button>
-            </div>
+            </div>`
+                    : ''
+            }
             
             ${
                 isDevHost
@@ -159,12 +165,26 @@ function renderAuth(container) {
     });
 
     // Social buttons (local mode — not available)
-    container.querySelector('#auth-google')?.addEventListener('click', () => {
-        Anim.showToast(`Google Sign-In — coming soon with cloud sync! ${LangyIcons.cloud}`);
-    });
-    container.querySelector('#auth-apple')?.addEventListener('click', () => {
-        Anim.showToast(`Apple Sign-In — coming soon with cloud sync! ${LangyIcons.cloud}`);
-    });
+    async function sandboxSocialLogin(provider) {
+        if (!isDevHost) {
+            Anim.showToast('Social sign-in is not configured for this build.');
+            return;
+        }
+        const email = `${provider.toLowerCase()}-sandbox@example.com`;
+        try {
+            await LangyDB.register(`${provider} Sandbox`, email, '123456');
+        } catch (e) {
+            /* ignore if exists */
+        }
+        await LangyDB.login(email, '123456');
+        requireFreshCourseLanguageChoice();
+        LangyDB.startAutoSave();
+        Anim.showToast(`${provider} sandbox login`);
+        Router.navigate('onboarding');
+    }
+
+    container.querySelector('#auth-google')?.addEventListener('click', () => sandboxSocialLogin('Google'));
+    container.querySelector('#auth-apple')?.addEventListener('click', () => sandboxSocialLogin('Apple'));
 
     // DEV FAST LOGIN
     container.querySelector('#auth-dev-login')?.addEventListener('click', async () => {

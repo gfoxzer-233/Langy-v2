@@ -369,7 +369,7 @@ describe('Home information architecture', () => {
             ['nav-inventory', 'inventory'],
             ['nav-shop', 'shop'],
             ['home-profile', 'profile'],
-            ['home-course-map', 'progress'],
+            ['home-course-map', 'course-map'],
         ].forEach(([id, route]) => {
             const button = container.querySelector(`#${id}`);
             expect(button).toBeInstanceOf(HTMLButtonElement);

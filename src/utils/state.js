@@ -1091,6 +1091,10 @@ function loadFromSnapshot(data) {
             }
         }
     }
+    const cleanBase = cloneStateValue(DEFAULT_STATE);
+    Object.keys(cleanBase).forEach(key => {
+        LangyState[key] = cleanBase[key];
+    });
     deepMerge(LangyState, data);
 
     if (!snapshotCourseCode) {

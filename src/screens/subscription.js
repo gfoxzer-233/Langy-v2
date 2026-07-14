@@ -52,6 +52,8 @@ const LANGY_CHECKOUT_PLANS = {
     },
 };
 
+let checkoutPaymentInFlight = false;
+
 function getCheckoutCourseCode() {
     if (typeof LangyApp === 'undefined') return LangyState.pendingCourseLanguage || LangyState.targetLanguage || null;
     return LangyApp.getPendingCourseLanguage?.() || LangyApp.getCourseLanguage?.();
@@ -184,6 +186,7 @@ function renderCheckoutPlan(container, courseCode, course, selectedPlan) {
 
 function renderCheckoutConfirm(container, courseCode, course, selectedPlan) {
     const renewalDate = getPreviewRenewalDate(selectedPlan);
+    const payDisabled = checkoutPaymentInFlight ? 'disabled data-loading="true"' : '';
     container.innerHTML = `
         <div class="screen subscription" style="padding-bottom:var(--sp-8);">
             <div class="subscription__header" style="padding-bottom:var(--sp-3);">
@@ -217,7 +220,7 @@ function renderCheckoutConfirm(container, courseCode, course, selectedPlan) {
             </div>
 
             <div style="padding:0 var(--sp-5); display:flex; flex-direction:column; gap:var(--sp-2);">
-                <button type="button" class="btn btn--primary btn--xl btn--full" id="checkout-pay">
+                <button type="button" class="btn btn--primary btn--xl btn--full" id="checkout-pay" ${payDisabled}>
                     Complete sandbox payment ${LangyIcons.check}
                 </button>
                 <button type="button" class="btn btn--secondary btn--full" id="checkout-back-plan">
@@ -257,31 +260,48 @@ function bindCheckoutEvents(container, courseCode) {
         renderSubscription(container);
     });
 
-    container.querySelector('#checkout-pay')?.addEventListener('click', async () => {
+    container.querySelector('#checkout-pay')?.addEventListener('click', async e => {
+        if (checkoutPaymentInFlight) return;
+        checkoutPaymentInFlight = true;
+        const payButton = e.currentTarget;
+        payButton.disabled = true;
+        payButton.dataset.loading = 'true';
+
         const plan = getCheckoutPlan();
-        const ok =
-            typeof LangyApp !== 'undefined'
-                ? LangyApp.activateCourseEntitlement(courseCode, {
-                      plan: plan.plan,
-                      billingPeriod: plan.billingPeriod,
-                      status: 'trialing',
-                      trialDays: plan.trialDays,
-                  })
-                : false;
+        try {
+            const ok =
+                typeof LangyApp !== 'undefined'
+                    ? LangyApp.activateCourseEntitlement(courseCode, {
+                          plan: plan.plan,
+                          billingPeriod: plan.billingPeriod,
+                          status: 'trialing',
+                          trialDays: plan.trialDays,
+                      })
+                    : false;
 
-        if (!ok) {
-            Anim.showToast('Payment could not activate this course. Please try again.');
-            return;
+            if (!ok) {
+                Anim.showToast('Payment could not activate this course. Please try again.');
+                payButton.disabled = false;
+                delete payButton.dataset.loading;
+                checkoutPaymentInFlight = false;
+                return;
+            }
+
+            LangyState.user.hasCompletedOnboarding = false;
+            ScreenState.set('targetLangChoice', courseCode);
+            ScreenState.set('onboardingStep', 3);
+            ScreenState.remove('checkoutStep');
+            ScreenState.remove('checkoutPlan');
+            if (typeof LangyDB !== 'undefined') await LangyDB.saveProgress().catch(() => {});
+            Anim.showToast(`${LANGY_COURSE_PRODUCTS[courseCode].title} activated`);
+            checkoutPaymentInFlight = false;
+            Router.navigate('onboarding');
+        } catch {
+            checkoutPaymentInFlight = false;
+            payButton.disabled = false;
+            delete payButton.dataset.loading;
+            Anim.showToast('Sandbox payment is unavailable. Please try again.');
         }
-
-        LangyState.user.hasCompletedOnboarding = false;
-        ScreenState.set('targetLangChoice', courseCode);
-        ScreenState.set('onboardingStep', 3);
-        ScreenState.remove('checkoutStep');
-        ScreenState.remove('checkoutPlan');
-        if (typeof LangyDB !== 'undefined') await LangyDB.saveProgress().catch(() => {});
-        Anim.showToast(`${LANGY_COURSE_PRODUCTS[courseCode].title} activated`);
-        Router.navigate('onboarding');
     });
 }
 

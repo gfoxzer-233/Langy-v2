@@ -590,7 +590,7 @@ function renderHome(container) {
         'nav-inventory': 'inventory',
         'nav-shop': 'shop',
         'home-profile': 'profile',
-        'home-course-map': 'progress',
+        'home-course-map': 'course-map',
     };
 
     const launchTalkFromHome = (mode, scenarioOverride) => {

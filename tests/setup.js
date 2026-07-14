@@ -69,5 +69,8 @@ loadScript('src/screens/auth.js');
 loadScript('src/screens/onboarding.js');
 loadScript('src/screens/subscription.js');
 loadScript('src/screens/home.js');
+loadScript('src/screens/course-map.js');
+loadScript('src/screens/lesson-overview.js');
 loadScript('src/screens/learning.js');
+loadScript('src/screens/review.js');
 loadScript('src/screens/profile.js');

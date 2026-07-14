@@ -22,7 +22,7 @@ function renderLearning(container) {
 
     // Determine unit
     let unit = null;
-    if (mode === 'homework' && params.unitId) {
+    if (params.unitId) {
         unit = activeTb.units.find(u => u.id === parseInt(params.unitId));
     } else {
         const currentUnitId = LangyState.progress.currentUnitId;

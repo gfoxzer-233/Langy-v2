@@ -246,6 +246,27 @@ function renderOnboarding(container) {
             },
         };
 
+        const courseDetails = {
+            en: {
+                skills: ['Speaking', 'Grammar', 'Vocabulary', 'Listening'],
+                structure: '7 levels · guided units · review checkpoints',
+                price: 'Langy Coach from $12/mo',
+                theme: 'London studio track',
+            },
+            es: {
+                skills: ['Conversation', 'Culture', 'Travel', 'Listening'],
+                structure: 'Pre-A1 foundations · real-life scenes · reviews',
+                price: 'Langy Coach from $12/mo',
+                theme: 'Warm city track',
+            },
+            ar: {
+                skills: ['Script', 'Reading', 'Sounds', 'Speaking'],
+                structure: 'Alphabet first · guided reading · checkpoints',
+                price: 'Langy Coach from $12/mo',
+                theme: 'RTL-ready Arabic track',
+            },
+        };
+
         const langCards = languageOrder.filter(code => languages[code]).map(code => {
             const cfg = languages[code];
             const isSelected = selectedLang === code;
@@ -262,9 +283,13 @@ function renderOnboarding(container) {
                 dir: cfg.direction || 'ltr',
             };
 
+            const details = courseDetails[code] || {};
+
             return `
-                <button class="onboarding__lang-card ${isSelected ? 'onboarding__lang-card--selected' : ''}"
+                <button type="button"
+                        class="onboarding__lang-card ${isSelected ? 'onboarding__lang-card--selected' : ''}"
                         data-lang="${code}"
+                        aria-pressed="${isSelected}"
                         dir="${copy.dir}"
                         style="
                             display:flex; align-items:center; gap:var(--sp-4);
@@ -293,6 +318,15 @@ function renderOnboarding(container) {
                         </div>
                         <div style="font-size:var(--fs-xs); color:var(--text-muted); margin-top:6px; font-weight:700;">
                             ${copy.path}
+                        </div>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:8px;">
+                            ${(details.skills || []).map(skill => `<span class="badge" style="font-size:9px; padding:2px 7px;">${skill}</span>`).join('')}
+                        </div>
+                        <div style="font-size:var(--fs-xs); color:var(--text-secondary); margin-top:8px; line-height:1.35;">
+                            ${details.structure || ''}
+                        </div>
+                        <div style="font-size:var(--fs-xs); color:var(--primary); margin-top:6px; font-weight:var(--fw-bold);">
+                            ${details.price || ''}
                         </div>
                     </div>
                     ${isSelected ? `<span style="color:var(--primary); flex-shrink:0;">${LangyIcons.check}</span>` : ''}
