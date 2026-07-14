@@ -153,7 +153,7 @@ function renderHomeTalkCard(meta, recommendedScenario) {
                     class="home-talk-orb"
                     id="home-talk-open"
                     data-talk-state="idle"
-                    aria-label="Начать разговор с маскотом"
+                    aria-label="${escapeHTML(talkLabel)}"
                     aria-haspopup="dialog"
                     aria-controls="home-talk-modal">
                 <span class="home-talk-orb__avatar" aria-hidden="true">
@@ -164,7 +164,7 @@ function renderHomeTalkCard(meta, recommendedScenario) {
             </button>
             <div class="home-talk-orb-card__text">
                 <h3 id="home-talk-title">${escapeHTML(talkLabel)}</h3>
-                <p>3-5 минут</p>
+                <p>3-5 min</p>
             </div>
         </section>
     `;
@@ -324,7 +324,6 @@ function buildContinuityCard() {
 
     // Skill analysis: find weakest and strongest
     const dims = [
-        { key: 'speaking', label: { en: 'Speaking', ru: 'Говорение', es: 'Hablar' }, icon: '🎙', route: 'talk' },
         { key: 'listening', label: { en: 'Listening', ru: 'Аудирование', es: 'Escucha' }, icon: '🎧', route: 'listening' },
         { key: 'writing', label: { en: 'Writing', ru: 'Письмо', es: 'Escritura' }, icon: '✍️', route: 'homework' },
         { key: 'grammar', label: { en: 'Grammar', ru: 'Грамматика', es: 'Gramática' }, icon: '📖', route: 'grammar' },
@@ -399,7 +398,7 @@ function buildContinuityCard() {
 
     // Recommended next action — cross-mode intelligence
     if (typeof NextAction !== 'undefined') {
-        html += NextAction.renderCard(lang, { excludeModes: ['homework'] });
+        html += NextAction.renderCard(lang, { excludeModes: ['homework', 'talk', 'listening'] });
     } else {
         html += `<button type="button" class="cont-recommend" data-route="${weakest.route}" style="width:100%; border:0; color:inherit; font:inherit; text-align:left; display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); margin-top:var(--sp-2); background:rgba(59,130,246,0.04); border-radius:var(--radius-sm); cursor:pointer;">
         <span style="font-size:16px;">${weakest.icon}</span>
@@ -605,6 +604,9 @@ function renderHome(container) {
             resume: ScreenState.get('talkScenario', scenarioFromCard),
         };
 
+        ['talkScenario', 'talkMascot', 'guidedSpeaking', 'talkView', 'coachFocus', 'coachFocusTag'].forEach(key => {
+            if (typeof ScreenState.persist === 'function') ScreenState.persist(key);
+        });
         ScreenState.set('talkScenario', scenarioByMode[mode] || scenarioFromCard);
         ScreenState.set('talkMascot', 3);
         ScreenState.set('guidedSpeaking', mode !== 'free');

@@ -1,0 +1,122 @@
+[
+  {
+    "screenId": "auth",
+    "route": "auth",
+    "primaryAction": "Sign up or sign in",
+    "secondaryActions": ["DEV LOGIN", "Switch auth mode"],
+    "buttons": ["auth-submit", "dev-login", "auth-switch"],
+    "states": ["login", "register", "loading", "error"],
+    "dataDependencies": ["LangyDB", "LangyState.user"],
+    "tests": ["auth switch button is not href=\"#\"", "DEV LOGIN starts app flow"]
+  },
+  {
+    "screenId": "onboarding",
+    "route": "onboarding",
+    "primaryAction": "Continue setup",
+    "secondaryActions": ["Choose goal", "Choose level", "Choose mascot"],
+    "buttons": ["onboarding-next", "goal choices", "level choices", "mascot choices"],
+    "states": ["welcome", "goal", "level", "mascot", "complete"],
+    "dataDependencies": ["LangyState.user", "LangyState.mascot", "LangyTarget"],
+    "tests": ["state persists", "mascot selection renders"]
+  },
+  {
+    "screenId": "courseSelection",
+    "route": "language-select",
+    "primaryAction": "Select course language before purchase",
+    "secondaryActions": ["Preview course", "Continue to checkout"],
+    "buttons": ["course cards", "continue"],
+    "states": ["available", "selected", "locked after entitlement"],
+    "dataDependencies": ["LangyTarget", "LangyApp entitlement"],
+    "tests": ["course cannot be changed on Home after entitlement"]
+  },
+  {
+    "screenId": "subscription",
+    "route": "subscription",
+    "primaryAction": "Activate selected course entitlement",
+    "secondaryActions": ["Compare plans", "Restore / back"],
+    "buttons": ["plan buttons", "checkout", "back"],
+    "states": ["free", "trial", "paid", "error"],
+    "dataDependencies": ["LangyApp", "LangyDB", "LangyTarget"],
+    "tests": ["selected course remains locked after purchase"]
+  },
+  {
+    "screenId": "home",
+    "route": "home",
+    "primaryAction": "Start or continue active lesson",
+    "secondaryActions": ["Open Talk modal", "Open course map", "Homework", "Tests", "Results", "Daily", "Events", "Duels", "Inventory", "Shop", "Profile"],
+    "buttons": ["nav-learning", "home-talk-open", "home-course-map", "nav-homework", "nav-tests", "nav-results", "nav-daily", "nav-events", "nav-duels", "nav-inventory", "nav-shop", "home-profile", "coin-langy", "coin-dangy"],
+    "states": ["first run", "lesson available", "lesson draft", "after lesson", "locked actions", "RTL"],
+    "dataDependencies": ["LangyCurriculum.getActive", "LangyState.progress", "LangyState.homework", "LangyTarget", "NextAction"],
+    "tests": ["one primary CTA", "one Talk entry", "no Home course switcher", "no bottom Talk tab", "no duplicate Talk recommendation buttons"]
+  },
+  {
+    "screenId": "talkModal",
+    "route": "home dialog",
+    "primaryAction": "Choose Omar conversation mode",
+    "secondaryActions": ["Close modal"],
+    "buttons": ["home-talk-close", "data-talk-mode=free", "data-talk-mode=lesson", "data-talk-mode=mistakes", "data-talk-mode=scenario", "data-talk-mode=resume"],
+    "states": ["free available", "lesson available", "mistakes disabled when empty", "resume disabled when empty"],
+    "dataDependencies": ["ScreenState", "LangyState.coachData"],
+    "tests": ["launch state survives Router.handleRoute"]
+  },
+  {
+    "screenId": "learning",
+    "route": "learning",
+    "primaryAction": "Complete active lesson exercises",
+    "secondaryActions": ["Back", "Ask AI for help", "Retry failed exercise", "Skip speaking fallback"],
+    "buttons": ["learning-back", "practice-ask-ai", "exercise-specific controls"],
+    "states": ["overview", "teaching", "exercise", "feedback correct", "feedback incorrect", "safe exercise error", "summary"],
+    "dataDependencies": ["LangyCurriculum", "LessonEngine", "ExerciseValidator", "LangyState.progress", "AIService", "TTS/STT"],
+    "tests": ["all exercise types render", "correct answer", "incorrect answer", "summary", "XP", "progress persists"]
+  },
+  {
+    "screenId": "results",
+    "route": "results",
+    "primaryAction": "Continue learning from progress hub",
+    "secondaryActions": ["Review weak units", "Open level units", "Open homework"],
+    "buttons": ["review-weak", "level unit buttons", "homework links"],
+    "states": ["empty history", "lesson history", "weak areas", "pending homework"],
+    "dataDependencies": ["LangyState.progress.lessonHistory", "LangyState.aiMemory", "LangyCurriculum"],
+    "tests": ["empty arrays do not crash", "lesson history renders"]
+  },
+  {
+    "screenId": "progress",
+    "route": "progress",
+    "primaryAction": "Inspect course map",
+    "secondaryActions": ["Open unit", "Review skill", "Back"],
+    "buttons": ["unit buttons", "skill cards"],
+    "states": ["completed", "current", "locked", "RTL"],
+    "dataDependencies": ["LangyCurriculum.getUnitStatusMap", "LangyState.progress.mastery"],
+    "tests": ["course map reflects active curriculum"]
+  },
+  {
+    "screenId": "profile",
+    "route": "profile",
+    "primaryAction": "Manage account and settings",
+    "secondaryActions": ["Interface language", "Subscription", "Help", "Logout"],
+    "buttons": ["language controls", "subscription", "help", "logout"],
+    "states": ["signed in", "guest/dev", "settings"],
+    "dataDependencies": ["LangyState.user", "LangyI18n", "LangyApp entitlement"],
+    "tests": ["interface language changes do not switch purchased course"]
+  },
+  {
+    "screenId": "homework",
+    "route": "homework",
+    "primaryAction": "Complete assigned homework",
+    "secondaryActions": ["Submit", "Retry when AI unavailable", "Back"],
+    "buttons": ["submit homework", "retry", "back"],
+    "states": ["empty", "pending", "submitting", "AI unavailable", "graded"],
+    "dataDependencies": ["LangyState.homework", "AIService"],
+    "tests": ["AI unavailable is honest and non-random"]
+  },
+  {
+    "screenId": "talk",
+    "route": "talk",
+    "primaryAction": "Speak with Omar",
+    "secondaryActions": ["End call", "Toggle subtitles", "Manual text fallback"],
+    "buttons": ["talk-mic", "talk-end", "talk-end-top", "talk-mute", "talk-text-send"],
+    "states": ["connecting", "mascot speaking", "your turn", "listening", "thinking", "manual input", "summary"],
+    "dataDependencies": ["ScreenState", "TalkEngine", "AIService", "STT", "TTS", "LangyState.talkHistory"],
+    "tests": ["bottom nav hidden", "round mic", "offline/AI unavailable does not crash"]
+  }
+]

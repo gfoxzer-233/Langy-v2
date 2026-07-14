@@ -4,8 +4,8 @@
   "description": "Smart AI English Tutor",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#F4F1ED",
-  "theme_color": "#2A4B82",
+  "background_color": "#FBF8F3",
+  "theme_color": "#5B4DFF",
   "icons": [
     {
       "src": "./assets/icons/icon-192x192.png",

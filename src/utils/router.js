@@ -206,6 +206,7 @@ const Router = {
         'mascot-select',
         'interests',
         'subscription',
+        'talk',
     ]),
 
     _navTabs: [

@@ -292,7 +292,7 @@ describe('Home information architecture', () => {
 
         const talkButton = container.querySelector('#home-talk-open');
         expect(talkButton).toBeInstanceOf(HTMLButtonElement);
-        expect(talkButton.getAttribute('aria-label')).toBe('Начать разговор с маскотом');
+        expect(talkButton.getAttribute('aria-label')).toBe('Talk with Omar');
         expect(container.querySelector('#home-talk-card').textContent).toContain('Talk with Omar');
         expect(talkButton.classList.contains('home-talk-orb')).toBe(true);
         expect(container.querySelector('#home-talk-card').textContent).not.toContain('Free talk');

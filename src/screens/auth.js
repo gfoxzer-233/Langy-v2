@@ -80,8 +80,8 @@ function renderAuth(container) {
             <p class="auth__footer">
                 ${
                     isLogin
-                        ? i18n('auth.no_account') + ' <a href="#" id="auth-switch">' + i18n('auth.register') + '</a>'
-                        : i18n('auth.have_account') + ' <a href="#" id="auth-switch">' + i18n('auth.login') + '</a>'
+                        ? i18n('auth.no_account') + ' <button type="button" class="auth__link" id="auth-switch">' + i18n('auth.register') + '</button>'
+                        : i18n('auth.have_account') + ' <button type="button" class="auth__link" id="auth-switch">' + i18n('auth.login') + '</button>'
                 }
             </p>
         </div>
