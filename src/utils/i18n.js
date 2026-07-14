@@ -476,6 +476,7 @@ const LangyI18n = {
     setLang(lang) {
         if (['en', 'ru', 'es'].includes(lang)) {
             this.currentLang = lang;
+            LangyState.interfaceLocale = lang;
             LangyState.settings.interfaceLang = lang;
             localStorage.setItem('langy_lang', lang);
             if (typeof LangyDB !== 'undefined') LangyDB.saveProgress().catch(() => {});
@@ -492,6 +493,10 @@ const LangyI18n = {
             const browserLang = navigator.language?.substring(0, 2);
             if (browserLang === 'ru') this.currentLang = 'ru';
             else if (browserLang === 'es') this.currentLang = 'es';
+        }
+        if (typeof LangyState !== 'undefined') {
+            LangyState.interfaceLocale = this.currentLang;
+            if (LangyState.settings) LangyState.settings.interfaceLang = this.currentLang;
         }
     },
 

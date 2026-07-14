@@ -1,323 +1,314 @@
 /* ============================================
-   SCREEN: SUBSCRIPTION — Outcome-driven Coach model
-   Free = a real, working language learning system
-   Coach = deeper coaching, smarter AI, faster growth
+   SCREEN: SUBSCRIPTION / CHECKOUT
+   Course selection is pre-payment. After payment, courseLanguage is locked.
    ============================================ */
 
-function renderSubscription(container) {
-    const lang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
-    const isCoach = ['coach', 'pro', 'premium'].includes(LangyState.subscription?.plan);
-    const talkCount = (LangyState.talkHistory || []).length;
-    const hasStreak = (LangyState.streakData?.current || 0) >= 3;
+const LANGY_COURSE_PRODUCTS = {
+    en: {
+        title: 'Langy English',
+        name: 'English',
+        label: 'Structured English course',
+        desc: 'Full English path from Pre-A1 to C2.',
+        flag: '&#127468;&#127463;',
+    },
+    es: {
+        title: 'Langy Spanish',
+        name: 'Spanish',
+        label: 'Conversation Spanish course',
+        desc: 'Full Spanish path from Pre-A1 to C2.',
+        flag: '&#127466;&#127480;',
+    },
+    ar: {
+        title: 'Langy Arabic',
+        name: 'Modern Standard Arabic',
+        label: 'Script-first Arabic course',
+        desc: 'Full Modern Standard Arabic path from Pre-A1 to C2.',
+        flag: '&#127480;&#127462;',
+    },
+};
 
-    // ─── Outcome-driven copy ───
+const LANGY_CHECKOUT_PLANS = {
+    coach_monthly: {
+        id: 'coach_monthly',
+        plan: 'coach',
+        billingPeriod: 'monthly',
+        name: 'Monthly',
+        price: '$12',
+        period: 'per month',
+        total: '$12.00',
+        trialDays: 7,
+        badge: 'Most flexible',
+    },
+    coach_yearly: {
+        id: 'coach_yearly',
+        plan: 'coach',
+        billingPeriod: 'yearly',
+        name: 'Yearly',
+        price: '$96',
+        period: 'per year',
+        total: '$96.00',
+        trialDays: 7,
+        badge: 'Best value',
+    },
+};
 
-    const headline = {
-        en: 'Two ways to learn.\nOne way to learn faster.',
-        ru: 'Два способа учить.\nОдин — быстрее.',
-        es: 'Dos formas de aprender.\nUna para mejorar más rápido.',
-    }[lang];
+function getCheckoutCourseCode() {
+    if (typeof LangyApp === 'undefined') return LangyState.pendingCourseLanguage || LangyState.targetLanguage || null;
+    return LangyApp.getPendingCourseLanguage?.() || LangyApp.getCourseLanguage?.();
+}
 
-    // Language-aware value framing
-    const targetCode = typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en';
-    const subheadline = {
-        ar: (() => {
-            const _tb = typeof LangyCurriculum !== 'undefined' ? LangyCurriculum.getActive() : null;
-            const _cefr = _tb?.cefr || '';
-            const _tc = typeof LangyTarget !== 'undefined' ? LangyTarget.current : null;
-            const _goal = LangyState.user?.goal || 'speak';
-            const _pathLabel = _tc?.learnerPaths?.[_goal];
-            if (_cefr && _pathLabel) {
-                return {
-                    en: `You're on ${_cefr} with a ${_pathLabel.label.en.toLowerCase()} focus. Free gives you real practice. Coach makes your Arabic path faster.`,
-                    ru: `\u0422\u044b \u043d\u0430 ${_cefr} \u0441 \u0444\u043e\u043a\u0443\u0441\u043e\u043c \u00ab${_pathLabel.label.ru}\u00bb. \u0411\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u044b\u0439 \u043f\u043b\u0430\u043d \u2014 \u0440\u0435\u0430\u043b\u044c\u043d\u0430\u044f \u043f\u0440\u0430\u043a\u0442\u0438\u043a\u0430. Coach \u0443\u0441\u043a\u043e\u0440\u0438\u0442 \u043f\u0443\u0442\u044c.`,
-                    es: `Est\u00e1s en ${_cefr} con enfoque en ${_pathLabel.label.es.toLowerCase()}. Gratis te da pr\u00e1ctica real. Coach acelera tu camino.`,
-                };
-            }
-            return {
-                en: 'Arabic is one of our deepest tracks. Free gives you real practice. Coach makes every session count more.',
-                ru: '\u0410\u0440\u0430\u0431\u0441\u043a\u0438\u0439 \u2014 \u043e\u0434\u0438\u043d \u0438\u0437 \u043d\u0430\u0448\u0438\u0445 \u0441\u0430\u043c\u044b\u0445 \u0433\u043b\u0443\u0431\u043e\u043a\u0438\u0445 \u0442\u0440\u0435\u043a\u043e\u0432. \u0411\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u044b\u0439 \u043f\u043b\u0430\u043d \u2014 \u0440\u0435\u0430\u043b\u044c\u043d\u0430\u044f \u043f\u0440\u0430\u043a\u0442\u0438\u043a\u0430. Coach \u2014 \u043a\u0430\u0436\u0434\u0430\u044f \u0441\u0435\u0441\u0441\u0438\u044f \u044d\u0444\u0444\u0435\u043a\u0442\u0438\u0432\u043d\u0435\u0435.',
-                es: '\u00c1rabe es una de nuestras pistas m\u00e1s profundas. Gratis te da pr\u00e1ctica real. Coach hace que cada sesi\u00f3n cuente m\u00e1s.',
-            };
-        })(),
-        en: (() => {
-            // English-specific: reference CEFR and curriculum context
-            const _tb = typeof LangyCurriculum !== 'undefined' ? LangyCurriculum.getActive() : null;
-            const _cefr = _tb?.cefr || '';
-            const _canDo = _tb?.canDo?.[0] || '';
-            if (_cefr && _canDo) {
-                return {
-                    en: `You're working toward ${_cefr}. Free gives you real lessons. Coach helps you reach "${_canDo.length > 60 ? _canDo.slice(0,57) + '...' : _canDo}" faster.`,
-                    ru: `Вы работаете над ${_cefr}. Бесплатный план — реальные уроки. Coach поможет быстрее достичь целей уровня.`,
-                    es: `Estás trabajando en ${_cefr}. Gratis te da lecciones reales. Coach te ayuda a alcanzar tus objetivos más rápido.`,
-                };
-            }
-            return {
-                en: 'Free gives you real structured English lessons. Coach makes every session build toward your CEFR goals.',
-                ru: 'Бесплатный план — реальные уроки. Coach строит каждую сессию к целям CEFR.',
-                es: 'Gratis te da lecciones reales de inglés. Coach construye cada sesión hacia tus objetivos CEFR.',
-            };
-        })(),
-        es: {
-            en: 'Free gives you real practice. Coach makes every session count more.',
-            ru: 'Бесплатный план — реальная практика. Coach — каждая сессия эффективнее.',
-            es: 'Gratis te da práctica real. Coach hace que cada sesión cuente más.',
-        },
-    }[targetCode]?.[lang] || 'Free gives you real practice. Coach makes every session count more.';
+function getCheckoutPlan() {
+    const planId = ScreenState.get('checkoutPlan', 'coach_monthly');
+    return LANGY_CHECKOUT_PLANS[planId] || LANGY_CHECKOUT_PLANS.coach_monthly;
+}
 
-    // Free plan: strong, positive, not diminished
-    const freeTitle = { en: 'Langy Free', ru: 'Langy Free', es: 'Langy Free' }[lang];
-    const freeDesc = {
-        en: 'Everything you need to start speaking.',
-        ru: 'Всё, чтобы начать говорить.',
-        es: 'Todo lo que necesitas para empezar a hablar.',
-    }[lang];
+function formatCheckoutDate(iso) {
+    if (!iso) return 'Not scheduled';
+    const locale = { ru: 'ru-RU', es: 'es-ES', en: 'en-US' }[typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en'] || 'en-US';
+    return new Date(iso).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
+}
 
-    const freeFeatures = {
-        en: [
-            { text: '4 AI conversation partners', icon: 'messageCircle' },
-            { text: 'Spoken feedback after every session', icon: 'mic' },
-            { text: 'Pronunciation scoring', icon: 'barChart' },
-            { text: 'Listening, writing & grammar practice', icon: 'bookOpen' },
-            { text: 'Daily speaking prompts', icon: 'zap' },
-            { text: 'All scenarios — no limits', icon: 'globe' },
-        ],
-        ru: [
-            { text: '4 ИИ-собеседника', icon: 'messageCircle' },
-            { text: 'Голосовой фидбэк после каждой сессии', icon: 'mic' },
-            { text: 'Оценка произношения', icon: 'barChart' },
-            { text: 'Аудирование, письмо и грамматика', icon: 'bookOpen' },
-            { text: 'Ежедневные разговорные задания', icon: 'zap' },
-            { text: 'Все сценарии — без ограничений', icon: 'globe' },
-        ],
-        es: [
-            { text: '4 compañeros de conversación IA', icon: 'messageCircle' },
-            { text: 'Feedback hablado después de cada sesión', icon: 'mic' },
-            { text: 'Puntuación de pronunciación', icon: 'barChart' },
-            { text: 'Escucha, escritura y gramática', icon: 'bookOpen' },
-            { text: 'Prompts diarios de conversación', icon: 'zap' },
-            { text: 'Todos los escenarios — sin límites', icon: 'globe' },
-        ],
-    }[lang];
+function getCheckoutRenewalIso(startDate, billingPeriod = 'monthly', trialDays = 7) {
+    const date = new Date(startDate || Date.now());
 
-    // Coach: outcome-first, learning transformation
-    const coachTitle = 'Langy Coach';
-    const coachTagline = {
-        en: 'Your AI tutor that gets smarter with you.',
-        ru: 'ИИ-репетитор, который растёт вместе с тобой.',
-        es: 'Tu tutor IA que mejora contigo.',
-    }[lang];
-
-    // Personalized context line based on user data + English curriculum
-    let personalLine = '';
-    const _isEnglish = targetCode === 'en';
-    const _activeTb = typeof LangyCurriculum !== 'undefined' ? LangyCurriculum.getActive() : null;
-    const _unitId = LangyState.progress?.currentUnitId || 1;
-    const _currentUnit = _activeTb?.units?.find(u => u.id === _unitId);
-    if (_isEnglish && _currentUnit && talkCount >= 3) {
-        const _grammarList = _currentUnit.grammar?.join(', ') || '';
-        personalLine = {
-            en: `You're on Unit ${_unitId}: ${_currentUnit.title}${_grammarList ? ` (${_grammarList})` : ''}. Coach would track how well you use this grammar across conversations and homework.`,
-            ru: `Ты на уроке ${_unitId}: ${_currentUnit.title}. Coach отслеживал бы, как ты используешь эту грамматику в разговорах и домашних заданиях.`,
-            es: `Estás en la Unidad ${_unitId}: ${_currentUnit.title}. Coach rastrearía cómo usas esta gramática en conversaciones y tareas.`,
-        }[lang];
-    } else if (talkCount >= 5) {
-        personalLine = {
-            en: `You've had ${talkCount} conversations. Coach would have been tracking your patterns across all of them.`,
-            ru: `Ты провёл ${talkCount} разговоров. Coach отслеживал бы твои паттерны во всех.`,
-            es: `Has tenido ${talkCount} conversaciones. Coach habría seguido tus patrones en todas.`,
-        }[lang];
-    } else if (targetCode === 'ar' && _currentUnit && talkCount >= 2) {
-        personalLine = {
-            en: `You're on Unit ${_unitId}: ${_currentUnit.title}. Coach would track your script reading accuracy and grammar patterns in Arabic.`,
-            ru: `Ты на уроке ${_unitId}: ${_currentUnit.title}. Coach отслеживал бы точность чтения и грамматику в арабском.`,
-            es: `Estás en la Unidad ${_unitId}: ${_currentUnit.title}. Coach rastrearía tu precisión en lectura y gramática árabe.`,
-        }[lang];
-    } else if (hasStreak) {
-        personalLine = {
-            en: 'You\'re building a streak. Coach helps make every day\'s practice more focused.',
-            ru: 'Ты строишь серию. Coach поможет сделать каждую практику более целенаправленной.',
-            es: 'Estás construyendo una racha. Coach te ayuda a que cada práctica sea más enfocada.',
-        }[lang];
+    if (Number.isFinite(trialDays) && trialDays > 0) {
+        date.setDate(date.getDate() + trialDays);
+    } else if (billingPeriod === 'yearly') {
+        date.setFullYear(date.getFullYear() + 1);
+    } else {
+        date.setMonth(date.getMonth() + 1);
     }
 
-    // Coach outcomes — English-specific curriculum outcomes vs generic
-    const coachOutcomes = (() => {
-        if (_isEnglish) {
-            return {
-                en: [
-                    { dim: 'Grammar Mastery', outcome: 'Coach tracks which grammar rules you struggle with and creates focused drills until they stick', icon: 'book', color: '#8B5CF6' },
-                    { dim: 'CEFR Progress', outcome: `Reach your ${_activeTb?.cefr || 'next'} can-do goals faster with coaching that aligns to curriculum`, icon: 'target', color: '#10B981' },
-                    { dim: 'Speaking Accuracy', outcome: 'Every conversation feeds corrections into a pattern tracker — so the same mistake doesn\'t repeat', icon: 'mic', color: '#7C6CF6' },
-                    { dim: 'Vocabulary Depth', outcome: 'Coach ensures unit vocabulary appears in your speaking, writing, and review — not just flashcards', icon: 'brain', color: '#F59E0B' },
-                    { dim: 'Continuity', outcome: 'Your tutor remembers everything: last unit, weak grammar, vocab gaps. Every session starts smarter', icon: 'refresh', color: '#3B82F6' },
-                ],
-                ru: [
-                    { dim: 'Грамматика', outcome: 'Coach отслеживает, в каких правилах ты ошибаешься, и создаёт целенаправленные упражнения', icon: 'book', color: '#8B5CF6' },
-                    { dim: 'Прогресс CEFR', outcome: `Достигни целей ${_activeTb?.cefr || 'уровня'} быстрее с коучингом по учебной программе`, icon: 'target', color: '#10B981' },
-                    { dim: 'Точность речи', outcome: 'Каждый разговор подаёт ошибки в трекер паттернов — чтобы не повторять одно и то же', icon: 'mic', color: '#7C6CF6' },
-                    { dim: 'Словарный запас', outcome: 'Coach следит, чтобы слова урока появлялись в речи, письме и повторении', icon: 'brain', color: '#F59E0B' },
-                    { dim: 'Непрерывность', outcome: 'Репетитор помнит всё: последний урок, слабую грамматику, пробелы в словаре', icon: 'refresh', color: '#3B82F6' },
-                ],
-                es: [
-                    { dim: 'Gramática', outcome: 'Coach rastrea qué reglas te cuestan y crea ejercicios enfocados hasta dominarlas', icon: 'book', color: '#8B5CF6' },
-                    { dim: 'Progreso CEFR', outcome: `Alcanza tus objetivos ${_activeTb?.cefr || 'de nivel'} más rápido con coaching alineado al currículo`, icon: 'target', color: '#10B981' },
-                    { dim: 'Precisión oral', outcome: 'Cada conversación alimenta un rastreador de patrones — para no repetir errores', icon: 'mic', color: '#7C6CF6' },
-                    { dim: 'Vocabulario', outcome: 'Coach asegura que el vocabulario de la unidad aparezca en tu habla, escritura y repaso', icon: 'brain', color: '#F59E0B' },
-                    { dim: 'Continuidad', outcome: 'Tu tutor recuerda todo: última unidad, gramática débil, vocabulario pendiente', icon: 'refresh', color: '#3B82F6' },
-                ],
-            }[lang];
-        }
-        if (targetCode === 'ar') {
-            return {
-                en: [
-                    { dim: 'Script Mastery', outcome: 'Coach tracks your letter recognition, connected forms, and reading fluency across every session', icon: 'bookOpen', color: '#0F766E' },
-                    { dim: 'MSA + Dialect', outcome: 'Understand when you\'re using formal vs spoken patterns — Coach keeps both tracks sharp', icon: 'globe', color: '#3B82F6' },
-                    { dim: 'Speaking Accuracy', outcome: 'Every conversation feeds corrections into a pattern tracker — pharyngeal sounds, shadda, tanween', icon: 'mic', color: '#7C6CF6' },
-                    { dim: 'Heritage & Faith', outcome: 'Coach connects your learning to cultural context: family phrases, Quranic vocabulary, daily expressions', icon: 'heart', color: '#EC4899' },
-                    { dim: 'Continuity', outcome: 'Your tutor remembers your weak letters, grammar gaps, and vocabulary — every session starts smarter', icon: 'refresh', color: '#F59E0B' },
-                ],
-                ru: [
-                    { dim: 'Письмо', outcome: 'Coach отслеживает распознавание букв, связные формы и беглость чтения в каждой сессии', icon: 'bookOpen', color: '#0F766E' },
-                    { dim: 'МСА + Диалект', outcome: 'Пойми, когда ты используешь формальные и разговорные паттерны — Coach держит оба трека', icon: 'globe', color: '#3B82F6' },
-                    { dim: 'Точность речи', outcome: 'Каждый разговор подаёт ошибки в трекер — фарингальные звуки, шадда, танвин', icon: 'mic', color: '#7C6CF6' },
-                    { dim: 'Наследие и вера', outcome: 'Coach связывает обучение с культурным контекстом: семейные фразы, кораническая лексика', icon: 'heart', color: '#EC4899' },
-                    { dim: 'Непрерывность', outcome: 'Репетитор помнит слабые буквы, грамматические пробелы и словарный запас', icon: 'refresh', color: '#F59E0B' },
-                ],
-                es: [
-                    { dim: 'Escritura', outcome: 'Coach rastrea tu reconocimiento de letras, formas conectadas y fluidez de lectura', icon: 'bookOpen', color: '#0F766E' },
-                    { dim: 'MSA + Dialecto', outcome: 'Entiende cuándo usas patrones formales vs hablados — Coach mantiene ambas pistas', icon: 'globe', color: '#3B82F6' },
-                    { dim: 'Precisión oral', outcome: 'Cada conversación alimenta correcciones: sonidos faríngeos, shadda, tanween', icon: 'mic', color: '#7C6CF6' },
-                    { dim: 'Herencia y fe', outcome: 'Coach conecta tu aprendizaje con contexto cultural: frases familiares, vocabulario coránico', icon: 'heart', color: '#EC4899' },
-                    { dim: 'Continuidad', outcome: 'Tu tutor recuerda letras débiles, gramática y vocabulario — cada sesión empieza más inteligente', icon: 'refresh', color: '#F59E0B' },
-                ],
-            }[lang];
-        }
-        return {
-            en: [
-                { dim: 'Speaking', outcome: 'Targeted correction that fixes your real speaking patterns', icon: 'mic', color: '#7C6CF6' },
-                { dim: 'Coaching', outcome: 'AI that remembers your weak spots and builds practice around them', icon: 'brain', color: '#3B82F6' },
-                { dim: 'Progress', outcome: 'See what\'s improving and what still needs work — across every skill', icon: 'trendingUp', color: '#10B981' },
-                { dim: 'Continuity', outcome: 'Every session starts smarter because it remembers the last one', icon: 'refresh', color: '#F59E0B' },
-                { dim: 'Review', outcome: 'Deeper feedback with pattern analysis, not just one-time corrections', icon: 'fileText', color: '#EC4899' },
-            ],
-            ru: [
-                { dim: 'Речь', outcome: 'Целевые исправления, которые работают над твоими реальными паттернами', icon: 'mic', color: '#7C6CF6' },
-                { dim: 'Коучинг', outcome: 'ИИ, который помнит слабые места и строит практику вокруг них', icon: 'brain', color: '#3B82F6' },
-                { dim: 'Прогресс', outcome: 'Видь, что улучшается, а что ещё требует работы — по всем навыкам', icon: 'trendingUp', color: '#10B981' },
-                { dim: 'Память', outcome: 'Каждая сессия начинается умнее, потому что помнит предыдущую', icon: 'refresh', color: '#F59E0B' },
-                { dim: 'Обзор', outcome: 'Глубокий фидбэк с анализом паттернов, а не одноразовые исправления', icon: 'fileText', color: '#EC4899' },
-            ],
-            es: [
-                { dim: 'Hablar', outcome: 'Corrección dirigida que arregla tus patrones reales al hablar', icon: 'mic', color: '#7C6CF6' },
-                { dim: 'Coaching', outcome: 'IA que recuerda tus puntos débiles y crea práctica enfocada', icon: 'brain', color: '#3B82F6' },
-                { dim: 'Progreso', outcome: 'Ve qué mejora y qué aún necesita trabajo — en cada habilidad', icon: 'trendingUp', color: '#10B981' },
-                { dim: 'Continuidad', outcome: 'Cada sesión empieza más inteligente porque recuerda la anterior', icon: 'refresh', color: '#F59E0B' },
-                { dim: 'Revisión', outcome: 'Feedback profundo con análisis de patrones, no solo correcciones', icon: 'fileText', color: '#EC4899' },
-            ],
-        }[lang];
-    })();
+    return date.toISOString();
+}
 
-    const freeCTA = { en: 'Continue with Free', ru: 'Продолжить бесплатно', es: 'Continuar con Free' }[lang];
-    const coachCTA = { en: 'Start learning faster', ru: 'Начать учиться быстрее', es: 'Empieza a aprender más rápido' }[lang];
-    const footerText = { en: 'Cancel anytime · No commitment', ru: 'Отмена в любой момент · Без обязательств', es: 'Cancela cuando quieras · Sin compromiso' }[lang];
+function getPreviewRenewalDate(plan) {
+    return formatCheckoutDate(getCheckoutRenewalIso(new Date().toISOString(), plan.billingPeriod, plan.trialDays));
+}
 
+function renderLockedSubscription(container, course, plan) {
+    const sub = LangyState.subscription || {};
+    container.innerHTML = `
+        <div class="screen subscription" style="padding-bottom:var(--sp-8);">
+            <div class="subscription__header">
+                <div style="font-size:44px; margin-bottom:var(--sp-2);">${course.flag}</div>
+                <h2>${course.title}</h2>
+                <p style="max-width:320px;margin:var(--sp-2) auto 0;color:var(--text-secondary);line-height:1.5;">
+                    This course is active on your account and cannot be changed from the app.
+                </p>
+            </div>
+            <div class="plan-card plan-card--recommended" style="margin:0 var(--sp-5);">
+                <div class="plan-card__badge">ACTIVE COURSE</div>
+                <div class="plan-card__header">
+                    <div>
+                        <div class="plan-card__name">${course.title}</div>
+                        <div style="font-size:var(--fs-sm);color:var(--text-secondary);">${course.label}</div>
+                    </div>
+                    <div class="plan-card__price">
+                        <div class="amount">${plan?.price || '$0'}</div>
+                        <div class="period">${sub.status || 'active'}</div>
+                    </div>
+                </div>
+                <div class="plan-card__features">
+                    <div class="plan-card__feature">${LangyIcons.check} Plan: ${sub.plan || 'coach'}</div>
+                    <div class="plan-card__feature">${LangyIcons.check} Billing: ${sub.billingPeriod || 'beta'}</div>
+                    <div class="plan-card__feature">${LangyIcons.check} Next renewal: ${formatCheckoutDate(sub.renewsAt)}</div>
+                </div>
+                <button type="button" class="btn btn--primary btn--full" id="checkout-home" style="margin-top:var(--sp-4);">
+                    ${LangyIcons.home} Continue learning
+                </button>
+            </div>
+        </div>
+    `;
+    container.querySelector('#checkout-home')?.addEventListener('click', () => Router.navigate('home'));
+}
+
+function renderCheckoutPlan(container, courseCode, course, selectedPlan) {
     container.innerHTML = `
         <div class="screen subscription" style="padding-bottom:var(--sp-8);">
             <div class="subscription__header" style="padding-bottom:var(--sp-3);">
-                <h2 style="white-space:pre-line; line-height:1.35;">${headline}</h2>
-                <p style="font-size:var(--fs-sm); color:var(--text-secondary); line-height:1.6; max-width:300px; margin:var(--sp-2) auto 0;">${subheadline}</p>
+                <div style="font-size:44px; margin-bottom:var(--sp-2);">${course.flag}</div>
+                <h2>${course.title}</h2>
+                <p style="max-width:320px;margin:var(--sp-2) auto 0;color:var(--text-secondary);line-height:1.5;">
+                    ${course.desc}
+                </p>
             </div>
 
-            <div class="plan-cards" style="gap:var(--sp-5);">
-
-                <!-- Coach (recommended — shown first for emphasis) -->
-                <div class="plan-card plan-card--recommended" data-plan="coach">
-                    <div class="plan-card__badge">${{ en: 'RECOMMENDED', ru: 'РЕКОМЕНДУЕМ', es: 'RECOMENDADO' }[lang]}</div>
-                    <div class="plan-card__header">
-                        <div>
-                            <div class="plan-card__name">${coachTitle}</div>
-                        </div>
-                        <div class="plan-card__price">
-                            <div class="amount">$12</div>
-                            <div class="period">/${{ en: 'month', ru: 'мес', es: 'mes' }[lang]}</div>
-                        </div>
+            <div class="plan-card" data-course-product="${courseCode}" style="margin:0 var(--sp-5) var(--sp-4);">
+                <div class="plan-card__header">
+                    <div>
+                        <div class="plan-card__name">${course.title}</div>
+                        <div style="font-size:var(--fs-sm);color:var(--text-secondary);">${course.label}</div>
                     </div>
-
-                    <p style="font-size:var(--fs-sm); color:var(--text-secondary); margin-bottom:var(--sp-2); line-height:1.6;">
-                        <strong style="color:var(--text); display:block; margin-bottom:4px;">${coachTagline}</strong>
-                    </p>
-
-                    ${personalLine ? `
-                    <div style="background:rgba(59,130,246,0.06); border-radius:var(--radius-md); padding:var(--sp-2) var(--sp-3); margin-bottom:var(--sp-3); border-left:3px solid var(--primary);">
-                        <div style="font-size:var(--fs-xs); color:var(--text-secondary); line-height:1.5; font-style:italic;">${personalLine}</div>
+                    <div class="plan-card__price">
+                        <div class="amount">Pre-A1-C2</div>
+                        <div class="period">one course</div>
                     </div>
-                    ` : ''}
+                </div>
+                <button type="button" class="btn btn--ghost btn--full" id="checkout-change-course" style="margin-top:var(--sp-3);">
+                    ${LangyIcons.back} Change course before payment
+                </button>
+            </div>
 
-                    <!-- Outcome cards by learning dimension -->
-                    <div style="display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-3);">
-                        ${coachOutcomes.map(o => `
-                        <div style="display:flex; align-items:flex-start; gap:10px; padding:var(--sp-2) 0;">
-                            <div style="width:28px; height:28px; border-radius:var(--radius-md); background:${o.color}11; color:${o.color}; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px;">
-                                ${LangyIcons[o.icon] || LangyIcons.check}
-                            </div>
+            <div class="plan-cards" style="gap:var(--sp-3);">
+                ${Object.values(LANGY_CHECKOUT_PLANS).map(plan => `
+                    <button type="button" class="plan-card ${selectedPlan.id === plan.id ? 'plan-card--recommended' : ''}" data-checkout-plan="${plan.id}" style="text-align:left;">
+                        ${selectedPlan.id === plan.id ? `<div class="plan-card__badge">${plan.badge}</div>` : ''}
+                        <div class="plan-card__header">
                             <div>
-                                <div style="font-size:var(--fs-xs); font-weight:var(--fw-bold); color:${o.color}; text-transform:uppercase; letter-spacing:0.3px;">${o.dim}</div>
-                                <div style="font-size:var(--fs-sm); color:var(--text-secondary); line-height:1.5;">${o.outcome}</div>
+                                <div class="plan-card__name">${plan.name}</div>
+                                <div style="font-size:var(--fs-sm);color:var(--text-secondary);">7-day trial included</div>
+                            </div>
+                            <div class="plan-card__price">
+                                <div class="amount">${plan.price}</div>
+                                <div class="period">${plan.period}</div>
                             </div>
                         </div>
-                        `).join('')}
-                    </div>
-
-                    <button class="btn btn--primary btn--full" style="margin-top:var(--sp-2);">
-                        ${coachCTA}
-                    </button>
-                </div>
-
-                <!-- Free (valuable, not diminished) -->
-                <div class="plan-card" data-plan="free">
-                    <div class="plan-card__header">
-                        <div>
-                            <div class="plan-card__name">${freeTitle}</div>
+                        <div class="plan-card__features">
+                            <div class="plan-card__feature">${LangyIcons.check} Full ${course.name} curriculum entitlement</div>
+                            <div class="plan-card__feature">${LangyIcons.check} Lessons, review, homework and Talk with Omar</div>
+                            <div class="plan-card__feature">${LangyIcons.check} Trial ends: ${getPreviewRenewalDate(plan)}</div>
                         </div>
-                        <div class="plan-card__price">
-                            <div class="amount">$0</div>
-                            <div class="period">${{ en: 'forever', ru: 'навсегда', es: 'siempre' }[lang]}</div>
-                        </div>
-                    </div>
-                    <p style="font-size:var(--fs-sm); color:var(--text-secondary); margin-bottom:var(--sp-3);">
-                        ${freeDesc}
-                    </p>
-                    <div class="plan-card__features">
-                        ${freeFeatures.map(f => `<div class="plan-card__feature" style="display:flex; align-items:center; gap:8px;">
-                            <span style="color:var(--accent-dark); font-size:13px; flex-shrink:0;">${LangyIcons[f.icon] || LangyIcons.check}</span> ${f.text}
-                        </div>`).join('')}
-                    </div>
-                    <button class="btn btn--secondary btn--full" style="margin-top: var(--sp-4);">
-                        ${freeCTA}
                     </button>
-                </div>
-
+                `).join('')}
             </div>
 
-            <p class="text-center text-sm text-secondary" style="margin-top: var(--sp-4);">
-                ${LangyIcons.shield} ${footerText}
-            </p>
+            <div style="padding:0 var(--sp-5);">
+                <button type="button" class="btn btn--primary btn--xl btn--full" id="checkout-continue">
+                    Continue to order ${LangyIcons.arrowRight}
+                </button>
+            </div>
         </div>
     `;
+}
 
-    // Plan selection
-    container.querySelectorAll('.plan-card').forEach(card => {
+function renderCheckoutConfirm(container, courseCode, course, selectedPlan) {
+    const renewalDate = getPreviewRenewalDate(selectedPlan);
+    container.innerHTML = `
+        <div class="screen subscription" style="padding-bottom:var(--sp-8);">
+            <div class="subscription__header" style="padding-bottom:var(--sp-3);">
+                <div style="font-size:44px; margin-bottom:var(--sp-2);">${course.flag}</div>
+                <h2>Confirm order</h2>
+                <p style="max-width:320px;margin:var(--sp-2) auto 0;color:var(--text-secondary);line-height:1.5;">
+                    Review exactly what will be activated on this account.
+                </p>
+            </div>
+
+            <div class="plan-card plan-card--recommended" style="margin:0 var(--sp-5) var(--sp-4);">
+                <div class="plan-card__badge">ORDER SUMMARY</div>
+                <div class="plan-card__header">
+                    <div>
+                        <div class="plan-card__name">${course.title}</div>
+                        <div style="font-size:var(--fs-sm);color:var(--text-secondary);">${course.label}</div>
+                    </div>
+                    <div class="plan-card__price">
+                        <div class="amount">${selectedPlan.total}</div>
+                        <div class="period">${selectedPlan.billingPeriod}</div>
+                    </div>
+                </div>
+                <div class="plan-card__features">
+                    <div class="plan-card__feature">${LangyIcons.check} Product: ${course.title}</div>
+                    <div class="plan-card__feature">${LangyIcons.check} Plan: Langy Coach ${selectedPlan.name}</div>
+                    <div class="plan-card__feature">${LangyIcons.check} Billing period: ${selectedPlan.billingPeriod}</div>
+                    <div class="plan-card__feature">${LangyIcons.check} Total today after trial: ${selectedPlan.total}</div>
+                    <div class="plan-card__feature">${LangyIcons.check} Trial: ${selectedPlan.trialDays} days, cancel anytime before renewal</div>
+                    <div class="plan-card__feature">${LangyIcons.check} Next renewal date: ${renewalDate}</div>
+                </div>
+            </div>
+
+            <div style="padding:0 var(--sp-5); display:flex; flex-direction:column; gap:var(--sp-2);">
+                <button type="button" class="btn btn--primary btn--xl btn--full" id="checkout-pay">
+                    Complete sandbox payment ${LangyIcons.check}
+                </button>
+                <button type="button" class="btn btn--secondary btn--full" id="checkout-back-plan">
+                    ${LangyIcons.back} Back to plan
+                </button>
+                <button type="button" class="btn btn--ghost btn--full" id="checkout-change-course">
+                    Change course before payment
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function bindCheckoutEvents(container, courseCode) {
+    container.querySelectorAll('[data-checkout-plan]').forEach(card => {
         card.addEventListener('click', () => {
-            const planId = card.dataset.plan;
-            if (planId === 'free') {
-                Anim.showToast(`${LangyIcons.check} ${freeTitle}!`);
-                setTimeout(() => Router.navigate('home'), 600);
-            } else {
-                Router.navigate('donation', { plan: 'coach' });
-            }
+            ScreenState.set('checkoutPlan', card.dataset.checkoutPlan);
+            ScreenState.set('checkoutStep', 'plan');
+            renderSubscription(container);
         });
     });
+
+    container.querySelector('#checkout-change-course')?.addEventListener('click', () => {
+        if (typeof LangyApp !== 'undefined') LangyApp.clearPendingCourseLanguage();
+        ScreenState.set('onboardingStep', 2);
+        ScreenState.remove('targetLangChoice');
+        Router.navigate('onboarding');
+    });
+
+    container.querySelector('#checkout-continue')?.addEventListener('click', () => {
+        ScreenState.set('checkoutStep', 'confirm');
+        renderSubscription(container);
+    });
+
+    container.querySelector('#checkout-back-plan')?.addEventListener('click', () => {
+        ScreenState.set('checkoutStep', 'plan');
+        renderSubscription(container);
+    });
+
+    container.querySelector('#checkout-pay')?.addEventListener('click', async () => {
+        const plan = getCheckoutPlan();
+        const ok =
+            typeof LangyApp !== 'undefined'
+                ? LangyApp.activateCourseEntitlement(courseCode, {
+                      plan: plan.plan,
+                      billingPeriod: plan.billingPeriod,
+                      status: 'trialing',
+                      trialDays: plan.trialDays,
+                  })
+                : false;
+
+        if (!ok) {
+            Anim.showToast('Payment could not activate this course. Please try again.');
+            return;
+        }
+
+        LangyState.user.hasCompletedOnboarding = false;
+        ScreenState.set('targetLangChoice', courseCode);
+        ScreenState.set('onboardingStep', 3);
+        ScreenState.remove('checkoutStep');
+        ScreenState.remove('checkoutPlan');
+        if (typeof LangyDB !== 'undefined') await LangyDB.saveProgress().catch(() => {});
+        Anim.showToast(`${LANGY_COURSE_PRODUCTS[courseCode].title} activated`);
+        Router.navigate('onboarding');
+    });
+}
+
+function renderSubscription(container) {
+    const courseCode = getCheckoutCourseCode();
+    const selectedPlan = getCheckoutPlan();
+
+    if (!courseCode || !LANGY_COURSE_PRODUCTS[courseCode]) {
+        ScreenState.set('onboardingStep', 2);
+        Router.navigate('onboarding');
+        return;
+    }
+
+    const course = LANGY_COURSE_PRODUCTS[courseCode];
+    const isLocked = typeof LangyApp !== 'undefined' && LangyApp.hasLockedCourseLanguage?.();
+    if (isLocked) {
+        renderLockedSubscription(container, course, selectedPlan);
+        return;
+    }
+
+    const step = ScreenState.get('checkoutStep', 'plan');
+    if (step === 'confirm') {
+        renderCheckoutConfirm(container, courseCode, course, selectedPlan);
+    } else {
+        renderCheckoutPlan(container, courseCode, course, selectedPlan);
+    }
+    bindCheckoutEvents(container, courseCode);
 
     setTimeout(() => Anim.staggerChildren(container, '.plan-card'), 100);
 }

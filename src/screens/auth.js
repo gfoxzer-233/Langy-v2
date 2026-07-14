@@ -145,7 +145,7 @@ function renderAuth(container) {
                 setTimeout(routeAfterLanguageGate, 500);
             } else {
                 await LangyDB.register(name, email, password);
-                requireFreshTargetLanguageChoice();
+                requireFreshCourseLanguageChoice();
                 LangyDB.startAutoSave();
                 Anim.showToast(`Account created! ${LangyIcons.check}`);
                 setTimeout(() => Router.navigate('onboarding'), 500);
@@ -175,10 +175,11 @@ function renderAuth(container) {
         }
 
         await LangyDB.login('test@example.com', '123456');
-        requireFreshTargetLanguageChoice();
+        requireFreshCourseLanguageChoice();
         LangyState.user.hasCompletedPlacement = false;
         LangyState.user.level = 'B2 Upper-Intermediate';
         LangyState.mascot.selected = 3; // Omar by default for testing
+        if (typeof LangyDB !== 'undefined') LangyDB.saveProgress().catch(() => {});
         LangyDB.startAutoSave();
         Anim.showToast(`Logged in as Test User ${LangyIcons.zap}`);
         Router.navigate('onboarding');
@@ -192,7 +193,7 @@ function renderAuth(container) {
 }
 
 function routeAfterLanguageGate() {
-    if (typeof LangyApp !== 'undefined' && !LangyApp.hasConfirmedTargetLanguage()) {
+    if (typeof LangyApp !== 'undefined' && !LangyApp.hasLockedCourseLanguage()) {
         ScreenState.set('onboardingStep', 2);
         ScreenState.remove?.('targetLangChoice');
         Router.navigate('onboarding');
@@ -200,8 +201,9 @@ function routeAfterLanguageGate() {
     }
 
     if (!LangyState.user?.hasCompletedOnboarding) {
-        if (LangyState.targetLanguage) ScreenState.set('targetLangChoice', LangyState.targetLanguage);
-        ScreenState.set('onboardingStep', LangyState.targetLanguage ? 3 : 2);
+        const courseLanguage = typeof LangyApp !== 'undefined' ? LangyApp.getCourseLanguage() : LangyState.targetLanguage;
+        if (courseLanguage) ScreenState.set('targetLangChoice', courseLanguage);
+        ScreenState.set('onboardingStep', courseLanguage ? 3 : 2);
         Router.navigate('onboarding');
         return;
     }
@@ -209,8 +211,20 @@ function routeAfterLanguageGate() {
     Router.navigate('home');
 }
 
-function requireFreshTargetLanguageChoice() {
+function requireFreshCourseLanguageChoice() {
+    if (typeof LangyApp !== 'undefined') LangyApp.clearPendingCourseLanguage();
+    LangyState.courseLanguage = null;
+    LangyState.pendingCourseLanguage = null;
     LangyState.targetLanguage = null;
+    if (LangyState.subscription) {
+        LangyState.subscription.courseLanguage = null;
+        LangyState.subscription.plan = null;
+        LangyState.subscription.billingPeriod = null;
+        LangyState.subscription.status = 'none';
+        LangyState.subscription.startedAt = null;
+        LangyState.subscription.renewsAt = null;
+        LangyState.subscription.entitlements = [];
+    }
     if (LangyState.user) {
         LangyState.user.targetLanguageConfirmed = false;
         LangyState.user.hasCompletedOnboarding = false;

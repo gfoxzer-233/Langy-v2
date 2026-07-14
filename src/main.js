@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Re-apply language from loaded state
                 if (typeof LangyI18n !== 'undefined' && LangyState.settings.interfaceLang) {
                     LangyI18n.currentLang = LangyState.settings.interfaceLang;
+                    LangyState.interfaceLocale = LangyState.settings.interfaceLang;
                 }
                 
                 // ─── STREAK MIGRATION ───
@@ -157,17 +158,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     LangyCurriculum.restoreFromState();
                 }
                 if (typeof LangyApp !== 'undefined') {
+                    LangyApp.migrateCourseEntitlement({ activate: false });
                     LangyApp.restoreActiveLanguageState();
                 }
 
-                const needsTargetLanguage =
-                    typeof LangyApp !== 'undefined' && !LangyApp.hasConfirmedTargetLanguage();
-                if (needsTargetLanguage) {
+                const needsCourseLanguage =
+                    typeof LangyApp !== 'undefined' && !LangyApp.hasLockedCourseLanguage();
+                if (needsCourseLanguage) {
                     ScreenState.set('onboardingStep', 2);
                     startRoute = 'onboarding';
                 } else if (!LangyState.user?.hasCompletedOnboarding) {
-                    if (LangyState.targetLanguage) ScreenState.set('targetLangChoice', LangyState.targetLanguage);
-                    ScreenState.set('onboardingStep', LangyState.targetLanguage ? 3 : 2);
+                    const courseLanguage = typeof LangyApp !== 'undefined' ? LangyApp.getCourseLanguage() : LangyState.targetLanguage;
+                    if (courseLanguage) ScreenState.set('targetLangChoice', courseLanguage);
+                    ScreenState.set('onboardingStep', courseLanguage ? 3 : 2);
                     startRoute = 'onboarding';
                 } else {
 

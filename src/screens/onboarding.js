@@ -6,18 +6,35 @@
 
 function renderOnboarding(container) {
     const needsTargetLanguage =
-        typeof LangyApp !== 'undefined' && typeof LangyApp.hasConfirmedTargetLanguage === 'function'
-            ? !LangyApp.hasConfirmedTargetLanguage()
+        typeof LangyApp !== 'undefined' && typeof LangyApp.hasLockedCourseLanguage === 'function'
+            ? !LangyApp.hasLockedCourseLanguage()
             : !LangyState.targetLanguage;
-    const rawStep = ScreenState.get('onboardingStep', needsTargetLanguage ? 2 : 1);
+    const rawStep = ScreenState.get('onboardingStep', needsTargetLanguage ? 2 : 3);
     const TOTAL_STEPS = 6;
     const VISIBLE_STEPS = 5; // App-language step is pre-flow, not counted
     const step = Math.min(Math.max(rawStep, 1), TOTAL_STEPS);
     const lang = typeof LangyI18n !== 'undefined' ? LangyI18n.currentLang : 'en';
-    const getSelectedTargetCode = () => ScreenState.get('targetLangChoice', LangyState.targetLanguage || null);
+    const getSelectedTargetCode = () => {
+        if (typeof LangyApp !== 'undefined') {
+            return (
+                LangyApp.getCourseLanguage?.() ||
+                ScreenState.get('targetLangChoice', LangyApp.getPendingCourseLanguage?.() || LangyState.targetLanguage || null)
+            );
+        }
+        return ScreenState.get('targetLangChoice', LangyState.targetLanguage || null);
+    };
 
     if (rawStep !== step) ScreenState.set('onboardingStep', step);
     if (step > 2) {
+        const hasCourseEntitlement =
+            typeof LangyApp !== 'undefined' && typeof LangyApp.hasLockedCourseLanguage === 'function'
+                ? LangyApp.hasLockedCourseLanguage()
+                : !!LangyState.targetLanguage;
+        if (!hasCourseEntitlement) {
+            ScreenState.set('onboardingStep', 2);
+            renderOnboarding(container);
+            return;
+        }
         const selectedTarget = getSelectedTargetCode();
         const isSupported = typeof LangyTarget !== 'undefined' && LangyTarget.isSupported(selectedTarget);
         if (!isSupported) {
@@ -175,7 +192,17 @@ function renderOnboarding(container) {
     // Clean cards: flag + localized name + warm subtitle. No jargon.
     // ═══════════════════════════════════════════
     if (step === 2) {
-        const selectedLang = ScreenState.get('targetLangChoice', null);
+        if (typeof LangyApp !== 'undefined' && LangyApp.hasLockedCourseLanguage?.()) {
+            ScreenState.set('targetLangChoice', LangyApp.getCourseLanguage());
+            ScreenState.set('onboardingStep', 3);
+            renderOnboarding(container);
+            return;
+        }
+
+        const selectedLang = ScreenState.get(
+            'targetLangChoice',
+            typeof LangyApp !== 'undefined' ? LangyApp.getPendingCourseLanguage?.() : null
+        );
         const languages = typeof LangyTarget !== 'undefined' ? LangyTarget.LANGUAGES : {};
 
         const langNames = {
@@ -278,10 +305,10 @@ function renderOnboarding(container) {
                 <div class="onboarding__header" style="padding-bottom:var(--sp-2);">
                     <div class="onboarding__step-badge">${{ en: 'Step', ru: 'Шаг', es: 'Paso' }[lang]} 1 / ${VISIBLE_STEPS}</div>
                     <h2 class="onboarding__title" style="font-size: var(--fs-2xl);">
-                        ${{ en: 'What do you want to learn?', ru: 'Что хочешь выучить?', es: '¿Qué quieres aprender?' }[lang]}
+                        ${{ en: 'Choose your course', ru: 'Выбери курс', es: 'Elige tu curso' }[lang]}
                     </h2>
                     <p class="onboarding__desc" style="max-width:340px; margin:var(--sp-1) auto 0;">
-                        ${{ en: 'Pick a language — you can always add more later', ru: 'Выбери язык — потом можно добавить ещё', es: 'Elige un idioma — siempre puedes añadir más' }[lang]}
+                        ${{ en: 'Pick one full Pre-A1-C2 course. You can change it before checkout.', ru: 'Выбери один полный курс Pre-A1-C2. До оплаты его можно изменить.', es: 'Elige un curso completo Pre-A1-C2. Puedes cambiarlo antes del pago.' }[lang]}
                     </p>
                 </div>
 
@@ -311,9 +338,14 @@ function renderOnboarding(container) {
                 Anim.showToast('Choose a language to continue');
                 return;
             }
-            LangyTarget.set(code, { persist: false });
-            ScreenState.set('onboardingStep', 3);
-            renderOnboarding(container);
+            if (typeof LangyApp !== 'undefined') {
+                LangyApp.setPendingCourseLanguage(code);
+            } else {
+                LangyState.pendingCourseLanguage = code;
+            }
+            ScreenState.set('checkoutPlan', 'coach_monthly');
+            ScreenState.set('checkoutStep', 'plan');
+            Router.navigate('subscription');
         });
 
         setTimeout(() => Anim.staggerChildren(container, '.onboarding__lang-card'), 50);

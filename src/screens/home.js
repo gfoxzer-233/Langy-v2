@@ -145,23 +145,27 @@ function renderHomeLessonCard(meta) {
 }
 
 function renderHomeTalkCard(meta, recommendedScenario) {
-    const mascotName = getHomeMascotName();
-    const talkLabel = formatHomeText('home.talk_with', { mascot: mascotName });
+    const talkLabel = formatHomeText('home.talk_with', { mascot: 'Omar' });
 
     return `
-        <section class="home-learning-card home-learning-card--talk" id="home-talk-card" aria-labelledby="home-talk-title" data-recommended-scenario="${escapeHTML(recommendedScenario || 'coffee')}">
-            <div class="home-learning-card__header">
-                <span class="home-learning-card__eyebrow">${i18n('home.talk_desc')}</span>
-                <span class="home-learning-card__state">${i18n('home.secondary_cta')}</span>
-            </div>
-            <h3 class="home-learning-card__title home-learning-card__title--sm" id="home-talk-title">${escapeHTML(meta?.unit?.title || i18n('home.talk_default_topic'))}</h3>
-            <button type="button" class="home-talk-entry" id="home-talk-open" aria-haspopup="dialog" aria-controls="home-talk-modal">
-                <span class="home-talk-entry__main">
-                    <span class="home-talk-entry__icon">${LangyIcons.messageCircle}</span>
-                    <span>${escapeHTML(talkLabel)}</span>
+        <section class="home-talk-orb-card" id="home-talk-card" aria-labelledby="home-talk-title" data-recommended-scenario="${escapeHTML(recommendedScenario || 'coffee')}">
+            <button type="button"
+                    class="home-talk-orb"
+                    id="home-talk-open"
+                    data-talk-state="idle"
+                    aria-label="Начать разговор с маскотом"
+                    aria-haspopup="dialog"
+                    aria-controls="home-talk-modal">
+                <span class="home-talk-orb__avatar" aria-hidden="true">
+                    <img src="assets/mascots/omar.png" alt="">
                 </span>
-                <span class="home-talk-entry__arrow" aria-hidden="true">${LangyIcons.arrow}</span>
+                <span class="home-talk-orb__mic" aria-hidden="true">${LangyIcons.mic}</span>
+                <span class="home-talk-orb__status" aria-hidden="true"></span>
             </button>
+            <div class="home-talk-orb-card__text">
+                <h3 id="home-talk-title">${escapeHTML(talkLabel)}</h3>
+                <p>3-5 минут</p>
+            </div>
         </section>
     `;
 }
@@ -273,30 +277,6 @@ function renderHomeCourseCard(meta) {
                 ${LangyIcons.map} ${i18n('home.view_course_map')}
             </button>
         </section>
-    `;
-}
-
-function renderHomeLanguageSwitcher() {
-    const current = typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en';
-    const languages = [
-        { code: 'en', flag: '🇬🇧', label: 'English' },
-        { code: 'es', flag: '🇪🇸', label: 'Español' },
-        { code: 'ar', flag: '🇸🇦', label: 'العربية', dir: 'rtl' },
-    ];
-
-    return `
-        <div class="home-language-switcher" role="group" aria-label="Study language">
-            ${languages.map(item => `
-                <button type="button"
-                        class="home-language-switcher__btn ${current === item.code ? 'home-language-switcher__btn--active' : ''}"
-                        data-home-language="${item.code}"
-                        dir="${item.dir || 'ltr'}"
-                        aria-pressed="${current === item.code}">
-                    <span>${item.flag}</span>
-                    <span>${escapeHTML(item.label)}</span>
-                </button>
-            `).join('')}
-        </div>
     `;
 }
 
@@ -496,8 +476,6 @@ function renderHome(container) {
                 ${(user.name || 'U')[0].toUpperCase()}
             </button>
             </div>
-            ${renderHomeLanguageSwitcher()}
-
             <!-- Hero Stage -->
             <div class="home__stage">
                 <!-- Mascot Stage (3D-ready container) -->
@@ -513,7 +491,6 @@ function renderHome(container) {
                         <span id="mascot-bubble-text"></span>
                     </div>
                     <!-- Tap zone -->
-                    <button type="button" style="position:absolute; inset:0; z-index:10; cursor:pointer; border:0; background:transparent;" title="Tap to Talk!" aria-label="Talk with mascot" id="mascot-tap-zone"></button>
                 </div>
                 <!-- Mascot identity -->
                 <div class="home__mascot-name">
@@ -617,20 +594,6 @@ function renderHome(container) {
         'home-course-map': 'progress',
     };
 
-    container.querySelectorAll('[data-home-language]').forEach(button => {
-        button.addEventListener('click', () => {
-            const code = button.dataset.homeLanguage;
-            if (!code || typeof LangyTarget === 'undefined' || !LangyTarget.isSupported(code)) return;
-            if (code === LangyTarget.getCode()) return;
-
-            const ok = LangyTarget.set(code);
-            if (!ok) return;
-            if (typeof LangyDB !== 'undefined') LangyDB.saveProgress().catch(() => {});
-            Anim.showToast(`${button.textContent.trim()} course loaded`);
-            renderHome(container);
-        });
-    });
-
     const launchTalkFromHome = (mode, scenarioOverride) => {
         const talkCard = container.querySelector('#home-talk-card');
         const scenarioFromCard = scenarioOverride || talkCard?.dataset.recommendedScenario || recommendedScenario || 'coffee';
@@ -643,7 +606,7 @@ function renderHome(container) {
         };
 
         ScreenState.set('talkScenario', scenarioByMode[mode] || scenarioFromCard);
-        ScreenState.set('talkMascot', LangyState.mascot.selected || 0);
+        ScreenState.set('talkMascot', 3);
         ScreenState.set('guidedSpeaking', mode !== 'free');
         ScreenState.set('talkView', mode === 'resume' && ScreenState.get('talkView') ? ScreenState.get('talkView') : 'call');
 
@@ -724,69 +687,6 @@ function renderHome(container) {
 
     // Mascot tap → bounce reaction + speech bubble, then learning
     // Signature phrases come FIRST, then generic
-    const mascotId = LangyState.mascot.selected || 0;
-    const signaturePhrases = {
-        3: ['Yellaaaaaaaaaa!', "Yella habibi, let's go!", 'Listen to my story...'],
-        1: ["It's lit!", 'Straight up!', 'La Flame says LEARN!'],
-        2: ['Alright, alright, alright.', "Just keep livin'.", "Let's get learnin'."],
-        0: ['You look amazing today!', "Let's serve some English!", 'Slay this lesson!'],
-    };
-    const genericPhrases = [
-        'Wanna chat?',
-        'Tap again to talk!',
-        "Let's have a conversation!",
-        'Practice speaking with me!',
-    ];
-    // First tap = always signature, then mix
-    let usedSignature = false;
-
-    container.querySelector('#mascot-tap-zone')?.addEventListener('click', () => {
-        const img = container.querySelector('#mascot-img');
-        const bubble = container.querySelector('#mascot-bubble');
-        const bubbleText = container.querySelector('#mascot-bubble-text');
-
-        let phrase;
-        const sigs = signaturePhrases[mascotId] || [];
-        if (!usedSignature && sigs.length > 0) {
-            phrase = sigs[0]; // Always show THE signature phrase first
-            usedSignature = true;
-        } else {
-            const allPhrases = [...sigs, ...genericPhrases];
-            phrase = allPhrases[Math.floor(Math.random() * allPhrases.length)];
-        }
-
-        // Bounce animation
-        if (img) {
-            img.style.animation = 'none';
-            img.offsetHeight; // trigger reflow
-            img.style.animation = 'mascotBounce 0.6s ease';
-            setTimeout(() => {
-                img.style.animation = 'mascotIdle 4s ease-in-out infinite';
-            }, 600);
-        }
-
-        // Show speech bubble
-        if (bubble && bubbleText) {
-            bubbleText.textContent = phrase;
-            bubble.style.display = 'block';
-            bubble.style.animation = 'none';
-            bubble.offsetHeight;
-            bubble.style.animation = 'bubblePop 0.4s ease-out';
-
-            // Auto-hide after 2s
-            clearTimeout(ScreenState.get('bubbleTimeout'));
-            ScreenState.set(
-                'bubbleTimeout',
-                setTimeout(() => {
-                    bubble.style.animation = 'bubbleFade 0.3s ease-in forwards';
-                    setTimeout(() => {
-                        bubble.style.display = 'none';
-                    }, 300);
-                }, 2000)
-            );
-        }
-    });
-
     // Animate entry
     if (!isEarlyJourney) {
         setTimeout(() => {

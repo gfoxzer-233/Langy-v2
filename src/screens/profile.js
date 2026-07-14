@@ -99,30 +99,6 @@ function buildAchievements() {
         .join('');
 }
 
-function renderProfileStudyLanguageSwitcher() {
-    const current = typeof LangyTarget !== 'undefined' ? LangyTarget.getCode() : 'en';
-    const languages = [
-        { code: 'en', flag: '🇬🇧', label: 'English' },
-        { code: 'es', flag: '🇪🇸', label: 'Español' },
-        { code: 'ar', flag: '🇸🇦', label: 'العربية', dir: 'rtl' },
-    ];
-
-    return `
-        <div class="profile-study-language" role="group" aria-label="Study language">
-            ${languages.map(item => `
-                <button type="button"
-                        class="profile-study-language__btn ${current === item.code ? 'profile-study-language__btn--active' : ''}"
-                        data-profile-language="${item.code}"
-                        dir="${item.dir || 'ltr'}"
-                        aria-pressed="${current === item.code}">
-                    <span>${item.flag}</span>
-                    <span>${item.label}</span>
-                </button>
-            `).join('')}
-        </div>
-    `;
-}
-
 function renderProfile(container) {
     const { user, settings, streakData, currencies } = LangyState;
 
@@ -334,7 +310,6 @@ function renderProfile(container) {
                         </div>
                         <div class="profile__option-arrow">${LangyIcons.arrow}</div>
                     </div>
-                    ${renderProfileStudyLanguageSwitcher()}
                 </div>
 
                 <!-- Learning -->
@@ -416,19 +391,6 @@ function renderProfile(container) {
     // Back
     container.querySelector('#profile-back')?.addEventListener('click', () => Router.navigate('home'));
     container.querySelector('#prof-progress')?.addEventListener('click', () => Router.navigate('progress'));
-
-    container.querySelectorAll('[data-profile-language]').forEach(button => {
-        button.addEventListener('click', () => {
-            const code = button.dataset.profileLanguage;
-            if (!code || typeof LangyTarget === 'undefined' || !LangyTarget.isSupported(code)) return;
-            if (code === LangyTarget.getCode()) return;
-            const ok = LangyTarget.set(code);
-            if (!ok) return;
-            if (typeof LangyDB !== 'undefined') LangyDB.saveProgress().catch(() => {});
-            Anim.showToast(`${button.textContent.trim()} course loaded`);
-            renderProfile(container);
-        });
-    });
 
     // Toggles
     function setupToggle(id, key) {

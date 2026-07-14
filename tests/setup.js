@@ -67,6 +67,7 @@ loadScript('src/utils/ai.js');
 loadScript('src/utils/router.js');
 loadScript('src/screens/auth.js');
 loadScript('src/screens/onboarding.js');
+loadScript('src/screens/subscription.js');
 loadScript('src/screens/home.js');
 loadScript('src/screens/learning.js');
 loadScript('src/screens/profile.js');

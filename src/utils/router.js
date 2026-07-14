@@ -93,14 +93,28 @@ const Router = {
             return;
         }
 
-        // Learning-language gate: logged-in learners must explicitly pick what they study.
+        // Course entitlement gate: logged-in learners must activate one paid course.
         if (
             hash !== 'auth' &&
             hash !== 'onboarding' &&
+            hash !== 'subscription' &&
             typeof LangyDB !== 'undefined' &&
             LangyDB.currentUser &&
             typeof LangyApp !== 'undefined' &&
-            !LangyApp.hasConfirmedTargetLanguage()
+            !LangyApp.hasLockedCourseLanguage()
+        ) {
+            ScreenState.set('onboardingStep', 2);
+            window.location.hash = 'onboarding';
+            return;
+        }
+
+        if (
+            hash === 'subscription' &&
+            typeof LangyDB !== 'undefined' &&
+            LangyDB.currentUser &&
+            typeof LangyApp !== 'undefined' &&
+            !LangyApp.hasLockedCourseLanguage() &&
+            !LangyApp.getPendingCourseLanguage()
         ) {
             ScreenState.set('onboardingStep', 2);
             window.location.hash = 'onboarding';
@@ -110,13 +124,14 @@ const Router = {
         if (
             hash !== 'auth' &&
             hash !== 'onboarding' &&
+            hash !== 'subscription' &&
             typeof LangyDB !== 'undefined' &&
             LangyDB.currentUser &&
             typeof LangyApp !== 'undefined' &&
-            LangyApp.hasConfirmedTargetLanguage() &&
+            LangyApp.hasLockedCourseLanguage() &&
             !LangyState.user?.hasCompletedOnboarding
         ) {
-            ScreenState.set('targetLangChoice', LangyState.targetLanguage);
+            ScreenState.set('targetLangChoice', LangyApp.getCourseLanguage());
             ScreenState.set('onboardingStep', 3);
             window.location.hash = 'onboarding';
             return;

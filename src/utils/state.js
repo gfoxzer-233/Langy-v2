@@ -3,6 +3,13 @@
    ============================================ */
 
 const LangyState = {
+    // App UI locale. This is separate from the paid course language.
+    interfaceLocale: 'en',
+
+    // Purchased course language. Before checkout this stays null.
+    courseLanguage: null,
+    pendingCourseLanguage: null,
+
     // Target language being studied (read by LangyTarget).
     // Null means the learner has not made an explicit study-language choice yet.
     targetLanguage: null,
@@ -48,6 +55,12 @@ const LangyState = {
     // Subscription — 2-tier: free (null/'free') | coach ('coach', legacy: 'pro','premium')
     subscription: {
         plan: null, // null|'free' = free tier, 'coach' = paid coaching, 'pro'|'premium' = legacy→coach
+        billingPeriod: null,
+        status: 'none',
+        courseLanguage: null,
+        startedAt: null,
+        renewsAt: null,
+        entitlements: [],
     },
 
     // Coach data — cross-session coaching intelligence
@@ -146,6 +159,7 @@ const LangyState = {
     // Per-language study progress. LangyState.progress always points at the
     // active language's progress object after a confirmed target-language choice.
     languageProgress: {},
+    archivedLanguageProgress: {},
 
     // Daily Challenge
     dailyChallenge: {
@@ -511,6 +525,7 @@ function getStreakReward(days) {
 // Deep copy of initial state for resets
 const DEFAULT_STATE = JSON.parse(JSON.stringify(LangyState));
 const LANGY_TARGET_CODES = ['en', 'es', 'ar'];
+const LANGY_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'beta', 'legacy', 'free'];
 
 function isValidTargetLanguageCode(code) {
     return LANGY_TARGET_CODES.includes(code);
@@ -518,6 +533,228 @@ function isValidTargetLanguageCode(code) {
 
 function cloneStateValue(value) {
     return JSON.parse(JSON.stringify(value));
+}
+
+function buildCourseEntitlements(code, plan = 'coach') {
+    const entitlements = [`course:${code}`, `curriculum:${code}`, 'lesson-engine', 'review', 'talk'];
+    if (['coach', 'pro', 'premium'].includes(plan)) entitlements.push('coach');
+    return entitlements;
+}
+
+function normalizeSubscriptionState() {
+    if (!LangyState.subscription || typeof LangyState.subscription !== 'object' || Array.isArray(LangyState.subscription)) {
+        LangyState.subscription = cloneStateValue(DEFAULT_STATE.subscription);
+    }
+
+    const sub = LangyState.subscription;
+    if (sub.plan === 'pro' || sub.plan === 'premium') sub.plan = 'coach';
+    if (!('billingPeriod' in sub)) sub.billingPeriod = null;
+    if (!('status' in sub)) sub.status = sub.courseLanguage ? 'active' : 'none';
+    if (!('courseLanguage' in sub)) sub.courseLanguage = null;
+    if (!('startedAt' in sub)) sub.startedAt = null;
+    if (!('renewsAt' in sub)) sub.renewsAt = null;
+    if (!Array.isArray(sub.entitlements)) sub.entitlements = [];
+
+    if (isValidTargetLanguageCode(sub.courseLanguage)) {
+        LangyState.courseLanguage = sub.courseLanguage;
+        if (!sub.entitlements.includes(`course:${sub.courseLanguage}`)) {
+            sub.entitlements = buildCourseEntitlements(sub.courseLanguage, sub.plan);
+        }
+        if (!sub.status || sub.status === 'none') sub.status = 'active';
+    } else {
+        sub.courseLanguage = null;
+        LangyState.courseLanguage = isValidTargetLanguageCode(LangyState.courseLanguage) ? LangyState.courseLanguage : null;
+    }
+
+    if (!isValidTargetLanguageCode(LangyState.pendingCourseLanguage)) {
+        LangyState.pendingCourseLanguage = null;
+    }
+}
+
+function getLockedCourseLanguage() {
+    normalizeSubscriptionState();
+    const sub = LangyState.subscription;
+    if (
+        isValidTargetLanguageCode(sub.courseLanguage) &&
+        LANGY_ACTIVE_SUBSCRIPTION_STATUSES.includes(sub.status || 'none') &&
+        sub.entitlements.includes(`course:${sub.courseLanguage}`)
+    ) {
+        return sub.courseLanguage;
+    }
+    return null;
+}
+
+function hasLockedCourseLanguage() {
+    return !!getLockedCourseLanguage();
+}
+
+function getCourseLanguage() {
+    return getLockedCourseLanguage() || (isValidTargetLanguageCode(LangyState.courseLanguage) ? LangyState.courseLanguage : null);
+}
+
+function getPendingCourseLanguage() {
+    const screenPending =
+        typeof ScreenState !== 'undefined' && typeof ScreenState.get === 'function'
+            ? ScreenState.get('pendingCourseLanguage', null)
+            : null;
+    return isValidTargetLanguageCode(screenPending)
+        ? screenPending
+        : isValidTargetLanguageCode(LangyState.pendingCourseLanguage)
+          ? LangyState.pendingCourseLanguage
+          : null;
+}
+
+function setPendingCourseLanguage(code) {
+    if (!isValidTargetLanguageCode(code)) return false;
+    const locked = getLockedCourseLanguage();
+    if (locked && locked !== code) {
+        console.warn(`[LangyState] Course language is locked to ${locked}`);
+        return false;
+    }
+    LangyState.pendingCourseLanguage = code;
+    if (typeof ScreenState !== 'undefined' && typeof ScreenState.set === 'function') {
+        ScreenState.set('pendingCourseLanguage', code);
+        ScreenState.set('targetLangChoice', code);
+    }
+    return true;
+}
+
+function clearPendingCourseLanguage() {
+    LangyState.pendingCourseLanguage = null;
+    if (typeof ScreenState !== 'undefined') {
+        ScreenState.remove?.('pendingCourseLanguage');
+        ScreenState.remove?.('checkoutPlan');
+        ScreenState.remove?.('checkoutStep');
+    }
+}
+
+function canActivateTargetLanguage(code, options = {}) {
+    if (!isValidTargetLanguageCode(code)) return false;
+    if (options.force === true || options.entitlement === true) return true;
+    const locked = getLockedCourseLanguage();
+    return !locked || locked === code;
+}
+
+function hasMeaningfulProgress(progress) {
+    if (!progress || typeof progress !== 'object') return false;
+    return (
+        (Array.isArray(progress.lessonHistory) && progress.lessonHistory.length > 0) ||
+        (progress.mastery && Object.keys(progress.mastery).length > 0) ||
+        (progress.topicsCompleted || 0) > 0 ||
+        (progress.overall || 0) > 0 ||
+        (progress.currentUnitId || 1) > 1
+    );
+}
+
+function archiveInactiveLanguageProgress(activeCode) {
+    if (!isValidTargetLanguageCode(activeCode)) return;
+    ensureLanguageProgressStore();
+    if (!LangyState.archivedLanguageProgress || typeof LangyState.archivedLanguageProgress !== 'object') {
+        LangyState.archivedLanguageProgress = {};
+    }
+
+    LANGY_TARGET_CODES.forEach(code => {
+        if (code === activeCode) return;
+        const progress = LangyState.languageProgress?.[code];
+        if (hasMeaningfulProgress(progress)) {
+            LangyState.archivedLanguageProgress[code] = cloneStateValue(progress);
+        }
+    });
+}
+
+function inferLegacyCourseLanguage() {
+    normalizeSubscriptionState();
+    if (isValidTargetLanguageCode(LangyState.subscription.courseLanguage)) return LangyState.subscription.courseLanguage;
+    if (isValidTargetLanguageCode(LangyState.courseLanguage)) return LangyState.courseLanguage;
+    if (LangyState.user?.targetLanguageConfirmed === true && isValidTargetLanguageCode(LangyState.targetLanguage)) {
+        return LangyState.targetLanguage;
+    }
+
+    ensureLanguageProgressStore();
+    const progressed = LANGY_TARGET_CODES.filter(code => hasMeaningfulProgress(LangyState.languageProgress?.[code]));
+    if (progressed.length === 1) return progressed[0];
+    if (progressed.length > 1) {
+        return isValidTargetLanguageCode(LangyState.targetLanguage) ? LangyState.targetLanguage : progressed[0];
+    }
+    return null;
+}
+
+function getRenewalDate(startDate, billingPeriod = 'monthly', trialDays = 7) {
+    const date = new Date(startDate || Date.now());
+    if (trialDays > 0) {
+        date.setDate(date.getDate() + trialDays);
+    } else if (billingPeriod === 'yearly') {
+        date.setFullYear(date.getFullYear() + 1);
+    } else {
+        date.setMonth(date.getMonth() + 1);
+    }
+    return date.toISOString();
+}
+
+function activateCourseEntitlement(code, options = {}) {
+    if (!isValidTargetLanguageCode(code)) return false;
+    const locked = getLockedCourseLanguage();
+    if (locked && locked !== code && options.force !== true) {
+        console.warn(`[LangyState] Cannot activate ${code}; course is locked to ${locked}`);
+        return false;
+    }
+
+    normalizeSubscriptionState();
+    const startedAt = options.startedAt || new Date().toISOString();
+    const plan = options.plan || 'coach';
+    const billingPeriod = options.billingPeriod || 'monthly';
+    const status = options.status || 'trialing';
+    const renewsAt = options.renewsAt || getRenewalDate(startedAt, billingPeriod, options.trialDays ?? 7);
+
+    LangyState.courseLanguage = code;
+    LangyState.pendingCourseLanguage = null;
+    LangyState.subscription.courseLanguage = code;
+    LangyState.subscription.plan = plan;
+    LangyState.subscription.billingPeriod = billingPeriod;
+    LangyState.subscription.status = status;
+    LangyState.subscription.startedAt = startedAt;
+    LangyState.subscription.renewsAt = renewsAt;
+    LangyState.subscription.entitlements = buildCourseEntitlements(code, plan);
+
+    if (!LangyState.user) LangyState.user = {};
+    LangyState.user.targetLanguageConfirmed = true;
+    archiveInactiveLanguageProgress(code);
+    activateTargetLanguage(code, { force: true, saveCurrent: false, persist: false });
+    clearPendingCourseLanguage();
+
+    if (options.persist !== false && typeof LangyDB !== 'undefined') {
+        LangyDB.saveProgress().catch(() => {});
+    }
+    return true;
+}
+
+function migrateCourseEntitlement(options = {}) {
+    normalizeSubscriptionState();
+    const locked = getLockedCourseLanguage();
+    if (locked) {
+        archiveInactiveLanguageProgress(locked);
+        return locked;
+    }
+
+    const inferred = inferLegacyCourseLanguage();
+    if (!inferred) return null;
+
+    LangyState.courseLanguage = inferred;
+    LangyState.subscription.courseLanguage = inferred;
+    LangyState.subscription.plan = LangyState.subscription.plan || 'legacy';
+    LangyState.subscription.billingPeriod = LangyState.subscription.billingPeriod || null;
+    LangyState.subscription.status = LangyState.subscription.status === 'none' ? 'legacy' : LangyState.subscription.status;
+    LangyState.subscription.startedAt = LangyState.subscription.startedAt || new Date().toISOString();
+    LangyState.subscription.renewsAt = LangyState.subscription.renewsAt || null;
+    LangyState.subscription.entitlements = buildCourseEntitlements(inferred, LangyState.subscription.plan);
+    if (!LangyState.user) LangyState.user = {};
+    LangyState.user.targetLanguageConfirmed = true;
+    archiveInactiveLanguageProgress(inferred);
+
+    if (options.activate !== false) {
+        activateTargetLanguage(inferred, { force: true, saveCurrent: false, persist: false });
+    }
+    return inferred;
 }
 
 function hasConfirmedTargetLanguage() {
@@ -669,6 +906,11 @@ function activateTargetLanguage(code, options = {}) {
         console.warn(`[LangyState] Unsupported target language: ${code}`);
         return false;
     }
+    if (!canActivateTargetLanguage(code, options)) {
+        const locked = getLockedCourseLanguage();
+        console.warn(`[LangyState] Course language is locked to ${locked}; rejected ${code}`);
+        return false;
+    }
 
     const previous = LangyState.targetLanguage;
     if (options.saveCurrent !== false && isValidTargetLanguageCode(previous)) {
@@ -695,8 +937,12 @@ function activateTargetLanguage(code, options = {}) {
 
 function restoreActiveLanguageState() {
     ensureLanguageProgressStore();
-    if (hasConfirmedTargetLanguage()) {
-        activateTargetLanguage(LangyState.targetLanguage, { saveCurrent: false, persist: false });
+    normalizeSubscriptionState();
+    const lockedCourse = migrateCourseEntitlement({ activate: false });
+    if (isValidTargetLanguageCode(lockedCourse)) {
+        activateTargetLanguage(lockedCourse, { force: true, saveCurrent: false, persist: false });
+    } else if (hasConfirmedTargetLanguage()) {
+        activateTargetLanguage(LangyState.targetLanguage, { force: true, saveCurrent: false, persist: false });
     } else {
         LangyState.targetLanguage = null;
         if (LangyState.user) LangyState.user.targetLanguageConfirmed = false;
@@ -821,8 +1067,11 @@ function getStateSnapshot() {
 
 function loadFromSnapshot(data) {
     data = data || {};
-    const confirmedTargetCode =
-        data.user?.targetLanguageConfirmed === true && isValidTargetLanguageCode(data.targetLanguage)
+    const snapshotCourseCode = isValidTargetLanguageCode(data.subscription?.courseLanguage)
+        ? data.subscription.courseLanguage
+        : isValidTargetLanguageCode(data.courseLanguage)
+          ? data.courseLanguage
+          : data.user?.targetLanguageConfirmed === true && isValidTargetLanguageCode(data.targetLanguage)
             ? data.targetLanguage
             : null;
 
@@ -844,18 +1093,24 @@ function loadFromSnapshot(data) {
     }
     deepMerge(LangyState, data);
 
-    if (!confirmedTargetCode) {
+    if (!snapshotCourseCode) {
         LangyState.targetLanguage = null;
+        LangyState.courseLanguage = null;
         if (!LangyState.user) LangyState.user = {};
         LangyState.user.targetLanguageConfirmed = false;
     } else {
-        LangyState.targetLanguage = confirmedTargetCode;
+        LangyState.targetLanguage = snapshotCourseCode;
+        LangyState.courseLanguage = snapshotCourseCode;
         LangyState.user.targetLanguageConfirmed = true;
         if (!LangyState.languageProgress) LangyState.languageProgress = {};
-        if (!LangyState.languageProgress[confirmedTargetCode]) {
-            LangyState.languageProgress[confirmedTargetCode] = mergeProgressShape(data.progress, confirmedTargetCode);
+        if (!LangyState.languageProgress[snapshotCourseCode]) {
+            LangyState.languageProgress[snapshotCourseCode] = mergeProgressShape(data.progress, snapshotCourseCode);
         }
     }
+
+    LangyState.interfaceLocale = LangyState.settings?.interfaceLang || LangyState.interfaceLocale || 'en';
+    normalizeSubscriptionState();
+    migrateCourseEntitlement({ activate: false });
 
     // Always keep template content from code (prevents stale cached emojis)
     const fresh = getDefaultState();
@@ -902,6 +1157,15 @@ const LangyApp = {
     resetState,
     isValidTargetLanguageCode,
     hasConfirmedTargetLanguage,
+    hasLockedCourseLanguage,
+    getCourseLanguage,
+    getLockedCourseLanguage,
+    getPendingCourseLanguage,
+    setPendingCourseLanguage,
+    clearPendingCourseLanguage,
+    activateCourseEntitlement,
+    migrateCourseEntitlement,
+    normalizeSubscriptionState,
     activateTargetLanguage,
     syncCurrentProgressToLanguage,
     getLanguageProgress,

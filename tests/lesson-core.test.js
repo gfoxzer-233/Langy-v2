@@ -100,7 +100,7 @@ describe('Curriculum validation', () => {
     });
 });
 
-describe('Language onboarding and switching', () => {
+describe('Course selection, checkout, and course lock', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
         makeContainer();
@@ -110,23 +110,26 @@ describe('Language onboarding and switching', () => {
         LangyI18n.currentLang = 'en';
     });
 
-    it('starts new learners at mandatory study-language selection', () => {
+    it('starts new learners at mandatory course selection before checkout', () => {
         const container = document.getElementById('screen-container');
+        const navSpy = vi.spyOn(Router, 'navigate').mockImplementation(() => {});
 
         renderOnboarding(container);
 
-        expect(container.textContent).toContain('What do you want to learn?');
+        expect(container.textContent).toContain('Choose your course');
         expect(container.querySelectorAll('.onboarding__lang-card')).toHaveLength(3);
         expect(container.querySelector('#onboarding-next').disabled).toBe(true);
         expect(LangyState.targetLanguage).toBe(null);
+        expect(LangyApp.hasLockedCourseLanguage()).toBe(false);
 
         click(container.querySelector('[data-lang="es"]'));
         click(container.querySelector('#onboarding-next'));
 
-        expect(LangyState.targetLanguage).toBe('es');
-        expect(LangyState.user.targetLanguageConfirmed).toBe(true);
-        expect(LangyCurriculum.getActive().id).toBe('es_pre_a1_foundations');
-        expect(ScreenState.get('onboardingStep')).toBe(3);
+        expect(LangyState.pendingCourseLanguage).toBe('es');
+        expect(LangyState.targetLanguage).toBe(null);
+        expect(LangyApp.hasLockedCourseLanguage()).toBe(false);
+        expect(ScreenState.get('checkoutStep')).toBe('plan');
+        expect(navSpy).toHaveBeenCalledWith('subscription');
     });
 
     it('keeps progress separate for English, Spanish, and Arabic', () => {
@@ -156,29 +159,56 @@ describe('Language onboarding and switching', () => {
         expect(LangyState.progress.currentUnitId).toBe(3);
     });
 
-    it('switches Home content and RTL state with working language buttons', () => {
+    it('activates the selected checkout course and blocks later curriculum switching', async () => {
         const container = document.getElementById('screen-container');
-        LangyCurriculum.activeTextbookId = 'pre_a1_starter';
-        LangyTarget.set('en', { persist: false });
-        LangyState.user.hasCompletedOnboarding = true;
-        LangyState.user.hasCompletedPlacement = true;
+        const navSpy = vi.spyOn(Router, 'navigate').mockImplementation(() => {});
+        LangyApp.setPendingCourseLanguage('ar');
+        ScreenState.set('checkoutPlan', 'coach_monthly');
 
-        renderHome(container);
-        expect(container.querySelectorAll('[data-home-language]')).toHaveLength(3);
-        expect(container.querySelector('#home-lesson-card').textContent).toContain('The English Alphabet');
+        renderSubscription(container);
+        expect(container.textContent).toContain('Langy Arabic');
+        expect(container.querySelectorAll('[data-checkout-plan]')).toHaveLength(2);
 
-        click(container.querySelector('[data-home-language="es"]'));
-        expect(LangyState.targetLanguage).toBe('es');
-        expect(container.querySelector('#home-lesson-card').textContent).toContain('Spanish sounds');
+        click(container.querySelector('#checkout-continue'));
+        expect(container.textContent).toContain('Confirm order');
+
+        click(container.querySelector('#checkout-pay'));
+        await flush();
+
+        expect(LangyState.subscription.courseLanguage).toBe('ar');
+        expect(LangyState.subscription.status).toBe('trialing');
+        expect(LangyState.subscription.entitlements).toContain('course:ar');
+        expect(LangyState.targetLanguage).toBe('ar');
+        expect(document.documentElement.dir).toBe('rtl');
+        expect(LangyTarget.set('en', { persist: false })).toBe(false);
+        expect(LangyState.targetLanguage).toBe('ar');
+        expect(navSpy).toHaveBeenCalledWith('onboarding');
+
+        ScreenState.clear();
+        renderOnboarding(container);
+        expect(container.textContent).toContain('Why are you learning Arabic?');
+        expect(container.querySelectorAll('[data-lang]')).toHaveLength(0);
+        return;
         expect(container.querySelector('#home-course-card').textContent).toContain('Español');
 
-        click(container.querySelector('[data-home-language="ar"]'));
         expect(LangyState.targetLanguage).toBe('ar');
         expect(document.documentElement.dir).toBe('rtl');
         expect(container.querySelector('#home-course-card').textContent).toContain('العربية');
     });
-    it('switches study language from Profile without mixing progress', () => {
+    it('does not expose course switchers on Home or Profile after purchase', () => {
         const container = document.getElementById('screen-container');
+        LangyApp.activateCourseEntitlement('es', { plan: 'coach', status: 'trialing', persist: false });
+        LangyState.user.hasCompletedOnboarding = true;
+        LangyState.user.hasCompletedPlacement = true;
+
+        renderHome(container);
+        expect(container.querySelectorAll('[data-home-language]')).toHaveLength(0);
+        expect(container.textContent).toContain('Espa');
+
+        renderProfile(container);
+        expect(container.querySelectorAll('[data-profile-language]')).toHaveLength(0);
+        expect(container.textContent).toContain('Interface Language');
+        return;
         LangyTarget.set('es', { persist: false });
         LangyState.user.hasCompletedOnboarding = true;
         LangyState.user.hasCompletedPlacement = true;
@@ -262,7 +292,9 @@ describe('Home information architecture', () => {
 
         const talkButton = container.querySelector('#home-talk-open');
         expect(talkButton).toBeInstanceOf(HTMLButtonElement);
-        expect(talkButton.textContent).toContain('Talk with Omar');
+        expect(talkButton.getAttribute('aria-label')).toBe('Начать разговор с маскотом');
+        expect(container.querySelector('#home-talk-card').textContent).toContain('Talk with Omar');
+        expect(talkButton.classList.contains('home-talk-orb')).toBe(true);
         expect(container.querySelector('#home-talk-card').textContent).not.toContain('Free talk');
         expect(container.querySelector('#home-talk-card').textContent).not.toContain('Lesson topic');
 
@@ -293,9 +325,8 @@ describe('Home information architecture', () => {
         expect(document.querySelector('#bottom-nav [data-route="talk"]')).toBeNull();
 
         renderHome(container);
-        click(container.querySelector('#mascot-tap-zone'));
-        click(container.querySelector('#mascot-tap-zone'));
 
+        expect(container.querySelector('#mascot-tap-zone')).toBeNull();
         expect(navSpy).not.toHaveBeenCalledWith('talk');
         expect(container.querySelector('#home-talk-open')).toBeInstanceOf(HTMLButtonElement);
     });

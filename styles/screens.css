@@ -321,59 +321,9 @@
     gap: var(--sp-2);
 }
 
-.home-language-switcher {
-    position: absolute;
-    top: 62px;
-    left: var(--sp-5);
-    right: var(--sp-5);
-    z-index: 120;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    padding: 5px;
-    border: 1px solid rgba(255,255,255,0.7);
-    border-radius: var(--radius-md);
-    background: rgba(255,255,255,0.76);
-    box-shadow: var(--shadow-sm);
-    backdrop-filter: blur(12px);
-}
-
 .home > .home__topbar {
     position: absolute;
     z-index: var(--z-sticky);
-}
-
-.home > .home-language-switcher {
-    position: absolute;
-    z-index: 120;
-}
-
-.home-language-switcher__btn {
-    min-width: 0;
-    min-height: 38px;
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-secondary);
-    font: inherit;
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-bold);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    cursor: pointer;
-    transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
-}
-
-.home-language-switcher__btn:active {
-    transform: scale(0.98);
-}
-
-.home-language-switcher__btn--active {
-    background: var(--primary);
-    color: #fff;
-    box-shadow: var(--shadow-xs);
 }
 
 /* ─── Hero Stage ─── */
@@ -382,8 +332,8 @@
     flex-direction: column;
     align-items: center;
     position: relative;
-    min-height: 330px;
-    padding: 112px var(--sp-5) var(--sp-4);
+    min-height: 348px;
+    padding: 82px var(--sp-5) var(--sp-5);
     background: linear-gradient(180deg, rgba(16, 185, 129, 0.04) 0%, var(--bg) 70%),
                 url('../assets/cartoon_england_bg.png');
     background-size: cover;
@@ -635,6 +585,121 @@
     align-items: center;
     justify-content: center;
     gap: var(--sp-2);
+}
+
+.home-talk-orb-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 2px 0 var(--sp-1);
+}
+
+.home-talk-orb {
+    appearance: none;
+    width: 104px;
+    height: 104px;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    border: 0;
+    background: radial-gradient(circle at 35% 28%, rgba(255,255,255,0.95), var(--primary-bg) 42%, var(--primary) 100%);
+    color: white;
+    box-shadow: 0 16px 34px rgba(16, 185, 129, 0.28);
+    display: grid;
+    place-items: center;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), filter var(--duration-fast) var(--ease-out);
+}
+
+.home-talk-orb:hover {
+    filter: brightness(1.04);
+    box-shadow: 0 18px 38px rgba(16, 185, 129, 0.34);
+}
+
+.home-talk-orb:active,
+.home-talk-orb[data-talk-state="pressed"] {
+    transform: scale(0.94);
+}
+
+.home-talk-orb:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, 0.45);
+    outline-offset: 4px;
+}
+
+.home-talk-orb[data-talk-state="loading"],
+.home-talk-orb[data-talk-state="active"] {
+    animation: micReady 1.8s ease-in-out infinite;
+}
+
+.home-talk-orb[disabled],
+.home-talk-orb[data-talk-state="unavailable"] {
+    opacity: 0.58;
+    cursor: not-allowed;
+    filter: grayscale(0.2);
+}
+
+.home-talk-orb__avatar {
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: rgba(255,255,255,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.home-talk-orb__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.home-talk-orb__mic {
+    position: absolute;
+    right: 9px;
+    bottom: 9px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.home-talk-orb__status {
+    position: absolute;
+    top: 10px;
+    right: 13px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #22c55e;
+    border: 2px solid white;
+}
+
+.home-talk-orb-card__text {
+    text-align: center;
+}
+
+.home-talk-orb-card__text h3 {
+    margin: 0;
+    font-size: var(--fs-base);
+    line-height: 1.2;
+}
+
+.home-talk-orb-card__text p {
+    margin: 2px 0 0;
+    color: var(--text-tertiary);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
 }
 
 .home-talk-entry {
@@ -896,17 +961,6 @@
         padding: 110px var(--sp-4) var(--sp-4);
     }
 
-    .home-language-switcher {
-        top: 60px;
-        left: var(--sp-3);
-        right: var(--sp-3);
-    }
-
-    .home-language-switcher__btn {
-        min-height: 36px;
-        gap: 4px;
-    }
-
     .home__mascot-stage {
         width: 154px;
         height: 184px;
@@ -965,6 +1019,16 @@
     .home-talk-entry__icon {
         width: 28px;
         height: 28px;
+    }
+
+    .home-talk-orb {
+        width: 92px;
+        height: 92px;
+    }
+
+    .home-talk-orb__avatar {
+        width: 68px;
+        height: 68px;
     }
 
     .home-talk-option {
@@ -1042,8 +1106,7 @@
 .home-talk-option:focus-visible,
 .home-talk-modal__close:focus-visible,
 .coin:focus-visible,
-#home-profile:focus-visible,
-#mascot-tap-zone:focus-visible {
+#home-profile:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
 }

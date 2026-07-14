@@ -1,0 +1,37 @@
+{
+  "status": "WORK IN PROGRESS",
+  "updatedAt": "2026-07-14T14:42:00+03:00",
+  "branch": "codex/langy-phase3-commercial-core",
+  "completedStage": "Stage 1 partial: purchase-bound course language, checkout flow, course lock, migration, Home course cleanup, single round Omar Talk entry",
+  "completedLanguages": ["en", "es", "ar"],
+  "completedLevels": ["Pre-A1 seeded curriculum only; full A1-C2 commercial depth is not complete"],
+  "actualTextbooks": 9,
+  "actualUnits": 137,
+  "actualLessons": 137,
+  "actualExercises": 1207,
+  "exerciseTypes": {
+    "fill-bubble": 504,
+    "match-pairs": 114,
+    "speak-aloud": 139,
+    "listen-type": 99,
+    "word-shuffle": 128,
+    "type-translation": 143,
+    "read-answer": 40,
+    "image-choice": 40
+  },
+  "validation": {
+    "npm run validate": "passed with existing ESLint warnings",
+    "npm test -- --run": "passed, 3 files, 71 tests",
+    "npm run build": "passed with existing Vite warnings about non-module script tags",
+    "manualBrowserFlow": "passed for signup -> course selection -> pre-payment course change -> Spanish checkout -> sandbox payment -> course onboarding -> Home -> reload -> single round Talk modal"
+  },
+  "currentBlockers": [
+    "Full English Pre-A1-C2, Spanish Pre-A1-C2, and Arabic MSA Pre-A1-C2 commercial content is not complete.",
+    "No minimum 544 core lessons per language yet.",
+    "Full lesson runner across every unit and every browser/manual account is not complete in this stage.",
+    "Production payment/server entitlement enforcement is still locally emulated.",
+    "Vite build still emits existing warnings for classic script tags in index.html.",
+    "ESLint still reports existing warnings outside the changed course-lock work."
+  ],
+  "nextProductionTask": "Stage 2: server-backed entitlement API, exhaustive route/button audit, and full lesson-runner verification for every active curriculum unit."
+}
